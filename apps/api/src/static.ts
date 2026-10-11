@@ -16,7 +16,9 @@ export async function registerStatic(
   app.setNotFoundHandler((req, reply) => {
     const path = req.url.split('?')[0] ?? '';
     const isApi = path === '/api' || path.startsWith('/api/');
-    if (req.method !== 'GET' || isApi) {
+    // A missing file (last segment has an extension) must 404, not get index.html.
+    const isFile = /\.[^/]+$/.test(path);
+    if (req.method !== 'GET' || isApi || isFile) {
       return reply.code(404).send({ error: 'not_found' });
     }
     if (playerDir && path.startsWith('/player')) {

@@ -58,6 +58,14 @@ describe('static serving', () => {
     expect(res.json()).toEqual({ error: 'not_found' });
   });
 
+  it('returns 404 for missing asset files instead of index.html', async () => {
+    for (const url of ['/assets/old-chunk.js', '/player/assets/old-chunk.js']) {
+      const res = await get(url);
+      expect(res.statusCode, url).toBe(404);
+      expect(res.body, url).not.toContain('INDEX');
+    }
+  });
+
   it('keeps health working', async () => {
     expect((await get('/api/health')).json()).toEqual({ status: 'ok', version: 't' });
   });
