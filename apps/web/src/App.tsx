@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { AuthProvider, RequireRole } from './auth';
 import { Institutional } from './pages/admin/Institutional';
-import { MidoraPlans } from './pages/admin/MidoraPlans';
+import { KrakenPlans } from './pages/admin/KrakenPlans';
 import { Partners } from './pages/admin/Partners';
 import { CampaignDetail } from './pages/campaigns/CampaignDetail';
 import { CampaignForm } from './pages/campaigns/CampaignForm';
@@ -25,7 +25,7 @@ export function AppRoutes() {
       <Route path="/admin" element={<RequireRole role="admin"><Layout role="admin" /></RequireRole>}>
         <Route index element={<Navigate to="parceiros" replace />} />
         <Route path="parceiros" element={<Partners />} />
-        <Route path="planos-midora" element={<MidoraPlans />} />
+        <Route path="planos-kraken" element={<KrakenPlans />} />
         <Route path="institucionais" element={<Institutional />} />
         <Route path="relatorios" element={<Reports />} />
       </Route>

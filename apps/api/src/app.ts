@@ -7,7 +7,7 @@ import { catalogRoutes } from './catalog/routes';
 import type { Db } from './db/client';
 import { healthRoutes } from './health';
 import { mediaRoutes } from './media/routes';
-import { midoraPlanRoutes } from './midora-plans/routes';
+import { krakenPlanRoutes } from './kraken-plans/routes';
 import { registerCsrfGuard } from './http/csrf';
 import type { UploadLimits } from './media/upload';
 import { adminPartnerRoutes } from './partners/admin-routes';
@@ -46,7 +46,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     registerCsrfGuard(app);
     await registerAuth(app, { db: opts.db, cookieSecure: opts.cookieSecure ?? false });
     await app.register(adminPartnerRoutes, { db: opts.db });
-    await app.register(midoraPlanRoutes, { db: opts.db });
+    await app.register(krakenPlanRoutes, { db: opts.db });
     await app.register(partnerRoutes, { db: opts.db });
     await app.register(catalogRoutes, { db: opts.db });
     await app.register(publicRoutes, { db: opts.db, cookieSecure: opts.cookieSecure ?? false });

@@ -11,8 +11,8 @@ const timestamps = {
     .$onUpdate(() => new Date()),
 };
 
-export const midoraPlans = pgTable(
-  'midora_plans',
+export const krakenPlans = pgTable(
+  'kraken_plans',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     name: text('name').notNull(),
@@ -21,7 +21,7 @@ export const midoraPlans = pgTable(
     active: boolean('active').notNull().default(true),
     ...timestamps,
   },
-  (t) => [check('midora_plans_price_check', sql`${t.priceCents} is null or ${t.priceCents} >= 0`)],
+  (t) => [check('kraken_plans_price_check', sql`${t.priceCents} is null or ${t.priceCents} >= 0`)],
 );
 
 export const partners = pgTable(
@@ -36,7 +36,7 @@ export const partners = pgTable(
     weightHigh: integer('weight_high').notNull().default(3),
     defaultImageSeconds: integer('default_image_seconds').notNull().default(10),
     showInstitutional: boolean('show_institutional').notNull().default(false),
-    midoraPlanId: uuid('midora_plan_id').references(() => midoraPlans.id, { onDelete: 'restrict' }),
+    krakenPlanId: uuid('kraken_plan_id').references(() => krakenPlans.id, { onDelete: 'restrict' }),
     transition: text('transition', { enum: ['fade', 'slide', 'cut'] }).notNull().default('fade'),
     transitionMs: integer('transition_ms').notNull().default(600),
     ...timestamps,

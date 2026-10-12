@@ -1,7 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { api } from '../../api';
 import { errorMessage } from '../../messages';
-import type { MidoraPlan, Partner } from '../../types';
+import type { KrakenPlan, Partner } from '../../types';
 import { Field, Notice, PageHeader } from '../../ui';
 
 export function slugify(name: string): string {
@@ -16,7 +16,7 @@ export function slugify(name: string): string {
 
 export function Partners() {
   const [partners, setPartners] = useState<Partner[]>([]);
-  const [plans, setPlans] = useState<MidoraPlan[]>([]);
+  const [plans, setPlans] = useState<KrakenPlan[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -27,7 +27,7 @@ export function Partners() {
 
   useEffect(() => {
     api<{ partners: Partner[] }>('/api/admin/partners').then((r) => setPartners(r.partners)).catch((e) => setError(errorMessage(e)));
-    api<{ plans: MidoraPlan[] }>('/api/admin/midora-plans').then((r) => setPlans(r.plans)).catch((e) => setError(errorMessage(e)));
+    api<{ plans: KrakenPlan[] }>('/api/admin/kraken-plans').then((r) => setPlans(r.plans)).catch((e) => setError(errorMessage(e)));
   }, []);
 
   const planName = (id: string | null) => plans.find((p) => p.id === id)?.name;
@@ -64,7 +64,7 @@ export function Partners() {
               <div className="row-main">
                 <div>{p.name}</div>
                 <div className="row-sub">
-                  /p/{p.slug} · {planName(p.midoraPlanId) ? `Plano Midora: ${planName(p.midoraPlanId)}` : 'sem Plano Midora'} · institucionais{' '}
+                  /p/{p.slug} · {planName(p.krakenPlanId) ? `Plano Kraken: ${planName(p.krakenPlanId)}` : 'sem Plano Kraken'} · institucionais{' '}
                   {p.showInstitutional ? 'sim' : 'não'}
                 </div>
               </div>
@@ -116,7 +116,7 @@ export function Partners() {
   );
 }
 
-function PartnerEditor({ partner, plans, onSaved }: { partner: Partner; plans: MidoraPlan[]; onSaved(p: Partner): void }) {
+function PartnerEditor({ partner, plans, onSaved }: { partner: Partner; plans: KrakenPlan[]; onSaved(p: Partner): void }) {
   const [form, setForm] = useState(partner);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [email, setEmail] = useState('');
@@ -133,10 +133,10 @@ function PartnerEditor({ partner, plans, onSaved }: { partner: Partner; plans: M
     e.preventDefault();
     setBusy(true);
     try {
-      const { name, status, showInstitutional, weightLow, weightMedium, weightHigh, defaultImageSeconds, midoraPlanId } = form;
+      const { name, status, showInstitutional, weightLow, weightMedium, weightHigh, defaultImageSeconds, krakenPlanId } = form;
       const r = await api<{ partner: Partner }>(`/api/admin/partners/${partner.id}`, {
         method: 'PATCH',
-        body: { name, status, showInstitutional, weightLow, weightMedium, weightHigh, defaultImageSeconds, midoraPlanId: midoraPlanId ?? null },
+        body: { name, status, showInstitutional, weightLow, weightMedium, weightHigh, defaultImageSeconds, krakenPlanId: krakenPlanId ?? null },
       });
       onSaved(r.partner);
       setMsg({ kind: 'ok', text: 'Alterações salvas.' });
@@ -173,11 +173,11 @@ function PartnerEditor({ partner, plans, onSaved }: { partner: Partner; plans: M
             <option value="inactive">Inativo (desconecta usuários e TVs)</option>
           </select>
         </Field>
-        <Field label="Plano Midora">
-          <select value={form.midoraPlanId ?? ''} onChange={(e) => setForm({ ...form, midoraPlanId: e.target.value || null })}>
+        <Field label="Plano Kraken">
+          <select value={form.krakenPlanId ?? ''} onChange={(e) => setForm({ ...form, krakenPlanId: e.target.value || null })}>
             <option value="">Sem plano</option>
             {plans
-              .filter((p) => p.active || p.id === form.midoraPlanId)
+              .filter((p) => p.active || p.id === form.krakenPlanId)
               .map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}

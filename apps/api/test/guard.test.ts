@@ -21,7 +21,7 @@ const PROTECTED: [string, string][] = [
   ['POST', `/api/admin/campaigns/${ID}/cancel`],
   ['GET', `/api/media/${ID}`], ['GET', '/api/player/manifest'], ['POST', '/api/player/plays'],
   ['GET', '/api/reports/plays?from=2026-10-01&to=2026-10-02'], ['GET', '/api/reports/plays.csv?from=2026-10-01&to=2026-10-02'], ['GET', '/api/player/me'], ['PATCH', '/api/partner/settings'],
-  ['GET', '/api/admin/midora-plans'], ['POST', '/api/admin/midora-plans'], ['PATCH', `/api/admin/midora-plans/${ID}`],
+  ['GET', '/api/admin/kraken-plans'], ['POST', '/api/admin/kraken-plans'], ['PATCH', `/api/admin/kraken-plans/${ID}`],
 ];
 
 it.each(PROTECTED)('%s %s requires a session', async (method, url) => {

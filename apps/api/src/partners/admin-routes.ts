@@ -5,7 +5,7 @@ import { requireRole } from '../auth/guard';
 import { hashPassword } from '../auth/password';
 import type { Db } from '../db/client';
 import { isUniqueViolation } from '../db/errors';
-import { midoraPlans, partners, users } from '../db/schema';
+import { krakenPlans, partners, users } from '../db/schema';
 import { parse } from '../http/validation';
 
 const Slug = z.string().max(60).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/);
@@ -28,7 +28,7 @@ const UpdatePartner = z
     weightMedium: Weight.optional(),
     weightHigh: Weight.optional(),
     defaultImageSeconds: z.number().int().min(1).max(3600).optional(),
-    midoraPlanId: z.uuid().nullable().optional(),
+    krakenPlanId: z.uuid().nullable().optional(),
   })
   .strict();
 
@@ -65,8 +65,8 @@ export const adminPartnerRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { 
     if (!params) return reply;
     const body = parse(UpdatePartner, req.body, reply);
     if (!body) return reply;
-    if (body.midoraPlanId) {
-      const [plan] = await db.select({ id: midoraPlans.id }).from(midoraPlans).where(eq(midoraPlans.id, body.midoraPlanId));
+    if (body.krakenPlanId) {
+      const [plan] = await db.select({ id: krakenPlans.id }).from(krakenPlans).where(eq(krakenPlans.id, body.krakenPlanId));
       if (!plan) return reply.code(400).send({ error: 'invalid_plan' });
     }
     const [partner] = await db

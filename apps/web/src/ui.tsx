@@ -11,7 +11,7 @@ import type { EffectiveStatus, Role } from './types';
 const NAV: Record<Exclude<Role, 'player'>, { to: string; label: string; icon: ReactNode }[]> = {
   admin: [
     { to: '/admin/parceiros', label: 'Parceiros', icon: <IconUsersGroup size={18} /> },
-    { to: '/admin/planos-midora', label: 'Planos Midora', icon: <IconReceipt size={18} /> },
+    { to: '/admin/planos-kraken', label: 'Planos Kraken', icon: <IconReceipt size={18} /> },
     { to: '/admin/institucionais', label: 'Institucionais', icon: <IconSpeakerphone size={18} /> },
     { to: '/admin/relatorios', label: 'Relatórios', icon: <IconChartBar size={18} /> },
   ],

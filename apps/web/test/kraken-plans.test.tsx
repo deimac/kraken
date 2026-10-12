@@ -16,14 +16,14 @@ describe('money', () => {
   });
 });
 
-describe('Midora plans screen', () => {
+describe('Kraken plans screen', () => {
   it('creates a plan with a price in reais', async () => {
     const calls = mockApi({
       'GET /api/auth/me': { user: adminUser },
-      'GET /api/admin/midora-plans': { plans: [] },
-      'POST /api/admin/midora-plans': (b: unknown) => ({ plan: { id: 'mp1', active: true, description: '', ...(b as object) } }),
+      'GET /api/admin/kraken-plans': { plans: [] },
+      'POST /api/admin/kraken-plans': (b: unknown) => ({ plan: { id: 'mp1', active: true, description: '', ...(b as object) } }),
     });
-    renderAt('/admin/planos-midora');
+    renderAt('/admin/planos-kraken');
     await userEvent.type(await screen.findByLabelText('Nome do plano'), 'Essencial');
     await userEvent.type(screen.getByLabelText('Valor mensal de referência (R$)'), '99,90');
     await userEvent.click(screen.getByRole('button', { name: 'Criar plano' }));
@@ -31,20 +31,20 @@ describe('Midora plans screen', () => {
     expect(await screen.findByText('Essencial')).toBeTruthy();
   });
 
-  it('assigns a Midora plan in the partner editor', async () => {
-    const partner = { id: 'p1', name: 'Ironberg', slug: 'ironberg', status: 'active', showInstitutional: false, weightLow: 1, weightMedium: 2, weightHigh: 3, defaultImageSeconds: 10, midoraPlanId: null };
+  it('assigns a Kraken plan in the partner editor', async () => {
+    const partner = { id: 'p1', name: 'Ironberg', slug: 'ironberg', status: 'active', showInstitutional: false, weightLow: 1, weightMedium: 2, weightHigh: 3, defaultImageSeconds: 10, krakenPlanId: null };
     const calls = mockApi({
       'GET /api/auth/me': { user: adminUser },
       'GET /api/admin/partners': { partners: [partner] },
-      'GET /api/admin/midora-plans': { plans: [{ id: 'mp1', name: 'Essencial', description: '', priceCents: 9900, active: true }] },
+      'GET /api/admin/kraken-plans': { plans: [{ id: 'mp1', name: 'Essencial', description: '', priceCents: 9900, active: true }] },
       'PATCH /api/admin/partners/p1': (b: unknown) => ({ partner: { ...partner, ...(b as object) } }),
     });
     renderAt('/admin/parceiros');
     await userEvent.click(await screen.findByRole('button', { name: 'Editar Ironberg' }));
     const editor = screen.getByRole('region', { name: 'Editar Ironberg' });
-    await userEvent.selectOptions(within(editor).getByLabelText('Plano Midora'), 'mp1');
+    await userEvent.selectOptions(within(editor).getByLabelText('Plano Kraken'), 'mp1');
     await userEvent.click(within(editor).getByRole('button', { name: 'Salvar' }));
-    expect(calls.find((c) => c.method === 'PATCH')!.body).toMatchObject({ midoraPlanId: 'mp1' });
-    expect(await screen.findByText(/Plano Midora: Essencial/)).toBeTruthy();
+    expect(calls.find((c) => c.method === 'PATCH')!.body).toMatchObject({ krakenPlanId: 'mp1' });
+    expect(await screen.findByText(/Plano Kraken: Essencial/)).toBeTruthy();
   });
 });
