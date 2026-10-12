@@ -56,6 +56,12 @@ Merge/push na `main` dispara build e deploy automáticos. O CI (`.github/workflo
 
 Variáveis novas no Coolify vêm marcadas como "Build Variable"; desmarque nas que contêm segredos.
 
+## Player
+
+- Endereço na TV: `/player/`; login com a conta `tv@<slug>` criada pelo parceiro em **Conta da TV**.
+- A TV busca a lista de anúncios a cada 5 minutos (`/api/player/manifest`) e renova a própria sessão automaticamente.
+- Guia de teste no aparelho: `docs/FIRE-TV.md`.
+
 ## Verificar
 
 - `GET /api/health` → `{"status":"ok","version":"<commit>"}`.
