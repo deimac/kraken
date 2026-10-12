@@ -60,6 +60,13 @@ describe('upload validation', () => {
     expect(await tmpFiles()).toEqual([]);
   });
 
+  it('rejects H.264 profiles, levels and sizes TVs cannot decode', async () => {
+    for (const opts of [{ profile: 110 }, { level: 52 }, { width: 4096, height: 2160 }]) {
+      const res = await upload(`/api/campaigns/${campaignId}/media`, s.gerenteA, { filename: 'v.mp4', contentType: 'video/mp4', data: buildMp4(opts) });
+      expect(res.json(), JSON.stringify(opts)).toEqual({ error: 'unsupported_media' });
+    }
+  });
+
   it('requires a multipart file', async () => {
     expect((await req('POST', `/api/campaigns/${campaignId}/media`, s.gerenteA, { a: 1 })).json()).toEqual({ error: 'file_required' });
   });

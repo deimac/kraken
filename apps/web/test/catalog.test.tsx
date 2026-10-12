@@ -56,4 +56,21 @@ describe('TV account', () => {
     expect(calls.find((c) => c.method === 'PUT')!.body).toEqual({ password: 'senha-tv-123' });
     expect(await screen.findByText(/TVs conectadas foram desconectadas/)).toBeTruthy();
   });
+
+  it('lets the partner choose the transition', async () => {
+    const calls = mockApi({
+      'GET /api/auth/me': { user: partnerUser },
+      'GET /api/partner': { partner: { id: 'p1', name: 'Ironberg', slug: 'ironberg', transition: 'fade', transitionMs: 600 } },
+      'PATCH /api/partner/settings': (b: unknown) => ({ partner: { id: 'p1', slug: 'ironberg', ...(b as object) } }),
+    });
+    renderAt('/parceiro/tv');
+    const type = await screen.findByLabelText('Transição entre anúncios');
+    await screen.findByText('tv@ironberg');
+    expect((type as HTMLSelectElement).value).toBe('fade');
+    await userEvent.selectOptions(type, 'slide');
+    await userEvent.selectOptions(screen.getByLabelText('Duração'), '1000');
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar transição' }));
+    expect(calls.find((c) => c.method === 'PATCH')!.body).toEqual({ transition: 'slide', transitionMs: 1000 });
+    expect(await screen.findByText('Transição salva. As TVs aplicam em até 5 minutos.')).toBeTruthy();
+  });
 });

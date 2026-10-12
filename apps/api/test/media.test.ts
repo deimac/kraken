@@ -30,7 +30,7 @@ describe('probeMp4', () => {
   };
 
   it('reads duration and codecs with moov first or last', async () => {
-    expect(await probeMp4(await write('a.mp4', buildMp4({ durationMs: 15000 })))).toEqual({
+    expect(await probeMp4(await write('a.mp4', buildMp4({ durationMs: 15000 })))).toMatchObject({
       durationMs: 15000, videoCodec: 'avc1', audioCodec: 'mp4a',
     });
     expect((await probeMp4(await write('b.mp4', buildMp4({ moovAtEnd: true, durationMs: 7000 })))).durationMs).toBe(7000);
@@ -41,9 +41,16 @@ describe('probeMp4', () => {
   });
 
   it('reports HEVC and missing audio', async () => {
-    expect(await probeMp4(await write('h.mp4', buildMp4({ video: 'hvc1', audio: null })))).toEqual({
+    expect(await probeMp4(await write('h.mp4', buildMp4({ video: 'hvc1', audio: null })))).toMatchObject({
       durationMs: 5000, videoCodec: 'hvc1', audioCodec: null,
     });
+  });
+
+  it('reads H.264 profile, level and resolution', async () => {
+    const info = await probeMp4(await write('p.mp4', buildMp4({ profile: 77, level: 31, width: 1280, height: 720 })));
+    expect(info).toMatchObject({ videoCodec: 'avc1', videoProfile: 77, videoLevel: 31, width: 1280, height: 720 });
+    const hevc = await probeMp4(await write('h2.mp4', buildMp4({ video: 'hvc1' })));
+    expect(hevc).toMatchObject({ videoProfile: null, videoLevel: null });
   });
 
   it('rejects files without moov and truncated boxes', async () => {

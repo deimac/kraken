@@ -1,3 +1,4 @@
+export type Transition = 'fade' | 'slide' | 'cut';
 export type Role = 'admin' | 'partner_user' | 'advertiser' | 'player';
 export type FrequencyLevel = 'low' | 'medium' | 'high';
 export type CampaignStatus = 'draft' | 'pending_review' | 'changes_requested' | 'approved' | 'cancelled';
@@ -7,6 +8,7 @@ export interface User { id: string; email: string; role: Role; partnerId: string
 export interface Partner {
   id: string; name: string; slug: string; status: 'active' | 'inactive'; showInstitutional: boolean;
   weightLow: number; weightMedium: number; weightHigh: number; defaultImageSeconds: number; midoraPlanId: string | null;
+  transition: Transition; transitionMs: number;
 }
 export interface MidoraPlan { id: string; name: string; description: string; priceCents: number | null; active: boolean }
 export interface Advertiser { id: string; name: string; contactName: string | null; email: string | null; phone: string | null; source: 'manual' | 'self_signup' }

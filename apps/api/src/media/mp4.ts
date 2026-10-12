@@ -4,6 +4,10 @@ export interface Mp4Info {
   durationMs: number;
   videoCodec: string | null;
   audioCodec: string | null;
+  width: number | null;
+  height: number | null;
+  videoProfile: number | null;
+  videoLevel: number | null;
 }
 
 interface Box {
@@ -50,6 +54,10 @@ function parseMoov(buf: Buffer): Mp4Info {
 
   let videoCodec: string | null = null;
   let audioCodec: string | null = null;
+  let width: number | null = null;
+  let height: number | null = null;
+  let videoProfile: number | null = null;
+  let videoLevel: number | null = null;
   for (const trak of children(buf, moov.start, moov.end).filter((b) => b.type === 'trak')) {
     const hdlr = path(buf, trak, ['mdia', 'hdlr']);
     const stsd = path(buf, trak, ['mdia', 'minf', 'stbl', 'stsd']);
@@ -57,10 +65,28 @@ function parseMoov(buf: Buffer): Mp4Info {
     const handler = buf.toString('latin1', hdlr.start + 8, hdlr.start + 12);
     // stsd: version/flags(4) + entry_count(4), then first sample entry: size(4) + format(4)
     const codec = buf.toString('latin1', stsd.start + 12, stsd.start + 16);
-    if (handler === 'vide' && !videoCodec) videoCodec = codec;
+    if (handler === 'vide' && !videoCodec) {
+      videoCodec = codec;
+      const entryEnd = stsd.start + 8 + buf.readUInt32BE(stsd.start + 8);
+      if (entryEnd > stsd.end) throw invalid();
+      // VisualSampleEntry: 78 fixed bytes (width at 24, height at 26), then child boxes such as avcC.
+      const entryStart = stsd.start + 16;
+      if (entryEnd - entryStart >= 78) {
+        width = buf.readUInt16BE(entryStart + 24);
+        height = buf.readUInt16BE(entryStart + 26);
+        const avcC = children(buf, entryStart + 78, entryEnd).find((b) => b.type === 'avcC');
+        if (avcC && avcC.end - avcC.start >= 4) {
+          videoProfile = buf[avcC.start + 1]!;
+          videoLevel = buf[avcC.start + 3]!;
+        }
+      }
+    }
     if (handler === 'soun' && !audioCodec) audioCodec = codec;
   }
-  return { durationMs: Math.round((duration * 1000) / timescale), videoCodec, audioCodec };
+  return {
+    durationMs: Math.round((duration * 1000) / timescale),
+    videoCodec, audioCodec, width, height, videoProfile, videoLevel,
+  };
 }
 
 /** Reads duration and codecs from the moov box without loading media data. */

@@ -41,6 +41,8 @@ export type UploadFail = { ok: false; status: 400 | 413 | 415 | 507; error: stri
 
 const IMAGE_EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 const VIDEO_CODECS = new Set(['avc1', 'avc3']);
+const H264_PROFILES = new Set([66, 77, 100]); // Baseline, Main, High — what TV decoders handle
+const MAX_H264_LEVEL = 51;
 
 export async function receiveUpload(
   req: FastifyRequest,
@@ -98,6 +100,12 @@ export async function receiveUpload(
         info.durationMs > 0 &&
         info.videoCodec !== null &&
         VIDEO_CODECS.has(info.videoCodec) &&
+        info.videoProfile !== null &&
+        H264_PROFILES.has(info.videoProfile) &&
+        info.videoLevel !== null &&
+        info.videoLevel <= MAX_H264_LEVEL &&
+        (info.width ?? 0) <= 3840 &&
+        (info.height ?? 0) <= 2160 &&
         (info.audioCodec === null || info.audioCodec === 'mp4a');
       if (!ok) return fail(415, 'unsupported_media');
       return { ...base, mediaType: 'video', mime: 'video/mp4', ext: 'mp4', durationMs: info.durationMs };
