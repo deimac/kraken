@@ -1,3 +1,4 @@
+import type { FastifyInstance } from 'fastify';
 import { hashPassword } from '../../src/auth/password';
 import type { Db } from '../../src/db/client';
 import { partners, users, type Role } from '../../src/db/schema';
@@ -21,4 +22,11 @@ export async function createUser(
     })
     .returning();
   return row!;
+}
+
+export async function login(app: FastifyInstance, email: string, password: string): Promise<string> {
+  const res = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email, password } });
+  if (res.statusCode !== 200) throw new Error(`login failed: ${res.statusCode} ${res.body}`);
+  const c = res.cookies.find((x) => x.name === 'midora_session');
+  return `midora_session=${c!.value}`;
 }

@@ -1,4 +1,4 @@
 export interface HealthResponse {
-  status: 'ok';
+  status: 'ok' | 'error';
   version: string;
 }
