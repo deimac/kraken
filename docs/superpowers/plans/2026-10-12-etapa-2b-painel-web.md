@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Telas do painel sobre a API da Etapa 2a: login; admin gerencia parceiros, usuários de parceiro e campanhas institucionais; parceiro gerencia anunciantes, planos, conta da TV e campanhas (criar, enviar mídia, aprovar, pedir correção, cancelar); anunciante cria e acompanha suas campanhas; página pública do parceiro com autocadastro. Tema claro (grafite + esmeralda) e noturno (noite + esmeralda) com botão lua/sol.
+**Goal:** Telas do painel sobre a API da Etapa 2a: login; super admin gerencia Planos Midora, parceiros (com o Plano Midora de cada um), usuários de parceiro e campanhas institucionais; parceiro gerencia anunciantes, planos, conta da TV e campanhas (criar, enviar mídia, aprovar, pedir correção, cancelar); anunciante cria e acompanha suas campanhas; página pública do parceiro com autocadastro. Tema claro (grafite + esmeralda) e noturno (noite + esmeralda) com botão lua/sol.
 
 **Architecture:** `apps/web` é um SPA React + React Router servido pela API em `/`. Um cliente `api()` fino sobre `fetch` (cookie de sessão same-origin), um `AuthProvider` que carrega `/api/auth/me`, rotas protegidas por papel e páginas por área (`pages/admin`, `pages/partner`, `pages/campaigns`, `pages/public`). Estilo em CSS puro com tokens em `:root[data-theme]`. Testes com Vitest + Testing Library e `fetch` simulado. Duas pequenas adições de API para as telas.
 
@@ -20,6 +20,7 @@
 - Upload: `POST .../media?displaySeconds=N` (só imagens), arquivo no campo `file` de `multipart/form-data`.
 - TypeScript `^6`; nenhuma dependência de UI pesada (sem kit de componentes).
 - Branch `feat/etapa-2b-painel-web`; Conventional Commits com `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; merge autorizado após CI verde + revisão final (memória do usuário).
+- **Planos Midora (decisão D8 da especificação):** só cadastro e vínculo ao parceiro — sem cobrança e sem limites. Na interface, chamar de "Planos Midora" (o que o parceiro contrata) e "Planos de anúncio" (o que o parceiro vende).
 - **Decisões desta etapa:** (a) relatório de inserções fica para a Etapa 4 (ainda não há dados de reprodução); (b) edição de anunciante pela tela fica fora — cadastro e listagem bastam no MVP (API de edição existe); (c) modo demonstração local (`pnpm --filter @midora/api demo`) com PGlite e usuários de teste, só para verificação; nunca usado em produção.
 
 ## Review Focus
@@ -1517,6 +1518,363 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
+### Task 4b: Planos Midora (API e tela do super admin)
+
+**Files:**
+- Modify: `apps/api/src/db/schema.ts`, `apps/api/src/partners/admin-routes.ts`, `apps/api/src/app.ts`, `apps/api/test/guard.test.ts`, `apps/api/test/schema.test.ts`
+- Create: `apps/api/src/midora-plans/routes.ts`, `apps/api/test/midora-plans.test.ts`, `apps/api/drizzle/0002_*.sql` (gerado)
+- Create: `apps/web/src/pages/admin/MidoraPlans.tsx`, `apps/web/test/midora-plans.test.tsx`
+- Modify: `apps/web/src/pages/admin/Partners.tsx`, `apps/web/src/types.ts`, `apps/web/src/format.ts`, `apps/web/src/ui.tsx`, `apps/web/src/App.tsx`
+
+**Interfaces:**
+- Produces (API):
+  - tabela `midora_plans` (`id`, `name`, `description` default `''`, `price_cents` inteiro ≥ 0 ou nulo, `active` default true, timestamps); `partners.midora_plan_id` (FK nula, `ON DELETE RESTRICT`)
+  - `GET /api/admin/midora-plans` → `{ plans }`; `POST /api/admin/midora-plans` `{ name, description?, priceCents? }` → 201 `{ plan }`; `PATCH /api/admin/midora-plans/:id` `{ name?, description?, priceCents?, active? }` → `{ plan }` | 404
+  - `PATCH /api/admin/partners/:id` aceita `midoraPlanId: uuid | null` (plano inexistente → 400 `invalid_plan`)
+- Produces (web): rota `/admin/planos-midora`; item de menu "Planos Midora"; seletor "Plano Midora" no editor do parceiro; `formatMoney(cents)`, `parseMoney(text)`; tipo `MidoraPlan`; `Partner.midoraPlanId`.
+
+- [ ] **Step 1: Testes de API que falham**
+
+`apps/api/test/midora-plans.test.ts`:
+```ts
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createTestApp, seed } from './helpers/app';
+
+let t: Awaited<ReturnType<typeof createTestApp>>;
+let s: Awaited<ReturnType<typeof seed>>;
+beforeAll(async () => {
+  t = await createTestApp();
+  s = await seed(t.app, t.db);
+});
+afterAll(() => t.close());
+
+const req = (method: 'GET' | 'POST' | 'PATCH', url: string, cookie?: string, payload?: unknown) =>
+  t.app.inject({ method, url, headers: cookie ? { cookie } : {}, payload: payload as object });
+
+describe('Midora plans', () => {
+  it('admin creates, lists and updates plans', async () => {
+    const res = await req('POST', '/api/admin/midora-plans', s.admin, { name: 'Essencial', description: 'Até 2 TVs', priceCents: 9900 });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().plan).toMatchObject({ name: 'Essencial', priceCents: 9900, active: true });
+    const id = res.json().plan.id;
+    expect((await req('PATCH', `/api/admin/midora-plans/${id}`, s.admin, { active: false, priceCents: null })).json().plan)
+      .toMatchObject({ active: false, priceCents: null });
+    expect((await req('GET', '/api/admin/midora-plans', s.admin)).json().plans.map((p: { id: string }) => p.id)).toContain(id);
+  });
+
+  it('rejects negative prices and non-admins', async () => {
+    expect((await req('POST', '/api/admin/midora-plans', s.admin, { name: 'X', priceCents: -1 })).statusCode).toBe(400);
+    expect((await req('GET', '/api/admin/midora-plans', s.gerenteA)).statusCode).toBe(403);
+    expect((await req('PATCH', '/api/admin/midora-plans/00000000-0000-4000-8000-000000000000', s.admin, { name: 'Y' })).statusCode).toBe(404);
+  });
+
+  it('assigns and clears a partner plan', async () => {
+    const plan = (await req('POST', '/api/admin/midora-plans', s.admin, { name: 'Pro' })).json().plan;
+    const upd = await req('PATCH', `/api/admin/partners/${s.partnerA.id}`, s.admin, { midoraPlanId: plan.id });
+    expect(upd.json().partner.midoraPlanId).toBe(plan.id);
+    const bad = await req('PATCH', `/api/admin/partners/${s.partnerA.id}`, s.admin, { midoraPlanId: '00000000-0000-4000-8000-000000000000' });
+    expect(bad.json()).toEqual({ error: 'invalid_plan' });
+    expect((await req('PATCH', `/api/admin/partners/${s.partnerA.id}`, s.admin, { midoraPlanId: null })).json().partner.midoraPlanId).toBeNull();
+  });
+});
+```
+
+`apps/api/test/guard.test.ts`: acrescentar `['GET', '/api/admin/midora-plans']`, `['POST', '/api/admin/midora-plans']`, `['PATCH', `/api/admin/midora-plans/${ID}`]`.
+
+Run: `pnpm --filter @midora/api test -- midora-plans`
+Expected: FAIL (rotas 404).
+
+- [ ] **Step 2: Schema, migração e rotas**
+
+`apps/api/src/db/schema.ts` — **antes** de `partners`:
+```ts
+export const midoraPlans = pgTable(
+  'midora_plans',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    description: text('description').notNull().default(''),
+    priceCents: integer('price_cents'),
+    active: boolean('active').notNull().default(true),
+    ...timestamps,
+  },
+  (t) => [check('midora_plans_price_check', sql`${t.priceCents} is null or ${t.priceCents} >= 0`)],
+);
+```
+e em `partners`:
+```ts
+    midoraPlanId: uuid('midora_plan_id').references(() => midoraPlans.id, { onDelete: 'restrict' }),
+```
+
+Run: `pnpm --filter @midora/api db:generate --name midora_plans` → `drizzle/0002_midora_plans.sql` só com `CREATE TABLE`, `ALTER TABLE "partners" ADD COLUMN`, `ADD CONSTRAINT` (sem `DROP`).
+
+`apps/api/src/midora-plans/routes.ts`:
+```ts
+import { asc, eq } from 'drizzle-orm';
+import type { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
+import { requireRole } from '../auth/guard';
+import type { Db } from '../db/client';
+import { midoraPlans } from '../db/schema';
+import { parse } from '../http/validation';
+
+const Fields = {
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(2000),
+  priceCents: z.number().int().min(0).max(100_000_000).nullable(),
+};
+const CreatePlan = z.object({ name: Fields.name, description: Fields.description.optional(), priceCents: Fields.priceCents.optional() }).strict();
+const UpdatePlan = z.object({ ...Fields, active: z.boolean() }).partial().strict();
+const IdParams = z.object({ id: z.uuid() });
+
+// Plans Midora sells to partners (spec D8): catalog only, no billing or limits.
+export const midoraPlanRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db }) => {
+  app.addHook('preHandler', requireRole('admin'));
+
+  app.get('/api/admin/midora-plans', async () => ({
+    plans: await db.select().from(midoraPlans).orderBy(asc(midoraPlans.name)),
+  }));
+
+  app.post('/api/admin/midora-plans', async (req, reply) => {
+    const body = parse(CreatePlan, req.body, reply);
+    if (!body) return reply;
+    const [plan] = await db.insert(midoraPlans).values(body).returning();
+    return reply.code(201).send({ plan });
+  });
+
+  app.patch('/api/admin/midora-plans/:id', async (req, reply) => {
+    const params = parse(IdParams, req.params, reply);
+    if (!params) return reply;
+    const body = parse(UpdatePlan, req.body, reply);
+    if (!body) return reply;
+    const [plan] = await db
+      .update(midoraPlans)
+      .set({ ...body, updatedAt: new Date() })
+      .where(eq(midoraPlans.id, params.id))
+      .returning();
+    if (!plan) return reply.code(404).send({ error: 'not_found' });
+    return { plan };
+  });
+};
+```
+
+`apps/api/src/partners/admin-routes.ts`: em `UpdatePartner` acrescentar `midoraPlanId: z.uuid().nullable().optional()`; no `PATCH`, antes do update:
+```ts
+    if (body.midoraPlanId) {
+      const [plan] = await db.select({ id: midoraPlans.id }).from(midoraPlans).where(eq(midoraPlans.id, body.midoraPlanId));
+      if (!plan) return reply.code(400).send({ error: 'invalid_plan' });
+    }
+```
+(importar `midoraPlans`). `apps/api/src/app.ts`: registrar `midoraPlanRoutes` junto de `adminPartnerRoutes`.
+
+Run: `pnpm --filter @midora/api test && pnpm typecheck`
+Expected: PASS (3 novos + guarda).
+
+- [ ] **Step 3: Teste de tela que falha**
+
+`apps/web/test/midora-plans.test.tsx`:
+```tsx
+import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it } from 'vitest';
+import { formatMoney, parseMoney } from '../src/format';
+import { mockApi } from './mock-api';
+import { adminUser, renderAt } from './render';
+
+describe('money', () => {
+  it('formats and parses Brazilian reais', () => {
+    expect(formatMoney(9900)).toMatch(/R\$\s?99,00/);
+    expect(formatMoney(null)).toBe('Sem valor definido');
+    expect(parseMoney('1.234,56')).toBe(123456);
+    expect(parseMoney('99')).toBe(9900);
+    expect(parseMoney('')).toBeNull();
+    expect(parseMoney('abc')).toBeUndefined();
+  });
+});
+
+describe('Midora plans screen', () => {
+  it('creates a plan with a price in reais', async () => {
+    const calls = mockApi({
+      'GET /api/auth/me': { user: adminUser },
+      'GET /api/admin/midora-plans': { plans: [] },
+      'POST /api/admin/midora-plans': (b: unknown) => ({ plan: { id: 'mp1', active: true, description: '', ...(b as object) } }),
+    });
+    renderAt('/admin/planos-midora');
+    await userEvent.type(await screen.findByLabelText('Nome do plano'), 'Essencial');
+    await userEvent.type(screen.getByLabelText('Valor mensal de referência (R$)'), '99,90');
+    await userEvent.click(screen.getByRole('button', { name: 'Criar plano' }));
+    expect(calls.find((c) => c.method === 'POST')!.body).toEqual({ name: 'Essencial', priceCents: 9990 });
+    expect(await screen.findByText('Essencial')).toBeTruthy();
+  });
+
+  it('assigns a Midora plan in the partner editor', async () => {
+    const partner = { id: 'p1', name: 'Ironberg', slug: 'ironberg', status: 'active', showInstitutional: false, weightLow: 1, weightMedium: 2, weightHigh: 3, defaultImageSeconds: 10, midoraPlanId: null };
+    const calls = mockApi({
+      'GET /api/auth/me': { user: adminUser },
+      'GET /api/admin/partners': { partners: [partner] },
+      'GET /api/admin/midora-plans': { plans: [{ id: 'mp1', name: 'Essencial', description: '', priceCents: 9900, active: true }] },
+      'PATCH /api/admin/partners/p1': (b: unknown) => ({ partner: { ...partner, ...(b as object) } }),
+    });
+    renderAt('/admin/parceiros');
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar Ironberg' }));
+    const editor = screen.getByRole('region', { name: 'Editar Ironberg' });
+    await userEvent.selectOptions(within(editor).getByLabelText('Plano Midora'), 'mp1');
+    await userEvent.click(within(editor).getByRole('button', { name: 'Salvar' }));
+    expect(calls.find((c) => c.method === 'PATCH')!.body).toMatchObject({ midoraPlanId: 'mp1' });
+    expect(await screen.findByText(/Plano Midora: Essencial/)).toBeTruthy();
+  });
+});
+```
+
+Run: `pnpm --filter @midora/web test -- midora-plans`
+Expected: FAIL.
+
+- [ ] **Step 4: Implementação web**
+
+`apps/web/src/types.ts`:
+```ts
+export interface MidoraPlan { id: string; name: string; description: string; priceCents: number | null; active: boolean }
+```
+e `Partner` ganha `midoraPlanId: string | null`.
+
+`apps/web/src/format.ts`:
+```ts
+const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+export function formatMoney(cents: number | null): string {
+  return cents === null ? 'Sem valor definido' : BRL.format(cents / 100);
+}
+
+/** "1.234,56" → 123456; "" → null; invalid → undefined. */
+export function parseMoney(text: string): number | null | undefined {
+  const t = text.trim();
+  if (t === '') return null;
+  if (!/^\d{1,3}(\.?\d{3})*(,\d{1,2})?$|^\d+(,\d{1,2})?$/.test(t)) return undefined;
+  const [int, dec = ''] = t.replace(/\./g, '').split(',');
+  return Number(int) * 100 + Number(dec.padEnd(2, '0'));
+}
+```
+
+`apps/web/src/pages/admin/MidoraPlans.tsx`:
+```tsx
+import { useEffect, useState, type FormEvent } from 'react';
+import { api } from '../../api';
+import { formatMoney, parseMoney } from '../../format';
+import { errorMessage } from '../../messages';
+import type { MidoraPlan } from '../../types';
+import { Field, Notice, PageHeader } from '../../ui';
+
+export function MidoraPlans() {
+  const [plans, setPlans] = useState<MidoraPlan[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api<{ plans: MidoraPlan[] }>('/api/admin/midora-plans').then((r) => setPlans(r.plans)).catch((e) => setError(errorMessage(e)));
+  }, []);
+
+  async function toggle(p: MidoraPlan) {
+    try {
+      const r = await api<{ plan: MidoraPlan }>(`/api/admin/midora-plans/${p.id}`, { method: 'PATCH', body: { active: !p.active } });
+      setPlans((l) => l.map((x) => (x.id === p.id ? r.plan : x)));
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  async function create(e: FormEvent) {
+    e.preventDefault();
+    const priceCents = parseMoney(price);
+    if (priceCents === undefined) return setError('Valor inválido. Use o formato 99,90.');
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api<{ plan: MidoraPlan }>('/api/admin/midora-plans', {
+        method: 'POST',
+        body: { name, ...(description.trim() ? { description } : {}), ...(priceCents !== null ? { priceCents } : {}) },
+      });
+      setPlans((l) => [...l, r.plan].sort((a, b) => a.name.localeCompare(b.name)));
+      setName('');
+      setDescription('');
+      setPrice('');
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <PageHeader title="Planos Midora" />
+      <p className="muted" style={{ marginTop: -12 }}>Planos que o Midora oferece aos parceiros. Ainda sem cobrança: servem de registro do que cada parceiro contratou.</p>
+      {error && <Notice kind="error">{error}</Notice>}
+      <div className="list" style={{ marginBottom: 16 }}>
+        {plans.map((p) => (
+          <div className="row" key={p.id}>
+            <div className="row-main">
+              <div>{p.name}</div>
+              <div className="row-sub">{formatMoney(p.priceCents)}{p.description ? ` · ${p.description}` : ''}</div>
+            </div>
+            <span className={`badge ${p.active ? 'badge-active' : 'badge-off'}`}>{p.active ? 'Ativo' : 'Inativo'}</span>
+            <button className="btn" type="button" aria-label={`${p.active ? 'Desativar' : 'Ativar'} ${p.name}`} onClick={() => toggle(p)}>
+              {p.active ? 'Desativar' : 'Ativar'}
+            </button>
+          </div>
+        ))}
+        {plans.length === 0 && <div className="row muted">Nenhum Plano Midora cadastrado.</div>}
+      </div>
+      <div className="card">
+        <h2>Novo Plano Midora</h2>
+        <form className="form" onSubmit={create}>
+          <Field label="Nome do plano"><input value={name} onChange={(e) => setName(e.target.value)} required /></Field>
+          <Field label="Valor mensal de referência (R$)"><input inputMode="decimal" placeholder="99,90" value={price} onChange={(e) => setPrice(e.target.value)} /></Field>
+          <Field label="Descrição"><textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
+          <div><button className="btn btn-primary" type="submit" disabled={busy}>Criar plano</button></div>
+        </form>
+      </div>
+    </>
+  );
+}
+```
+
+`apps/web/src/pages/admin/Partners.tsx`:
+- carregar também `GET /api/admin/midora-plans` em `Partners` e passar `plans` ao `PartnerEditor`;
+- na linha do parceiro, `row-sub` mostra `Plano Midora: <nome>` (ou `sem Plano Midora`);
+- no `PartnerEditor`, novo campo antes dos pesos:
+```tsx
+        <Field label="Plano Midora">
+          <select value={form.midoraPlanId ?? ''} onChange={(e) => setForm({ ...form, midoraPlanId: e.target.value || null })}>
+            <option value="">Sem plano</option>
+            {plans.filter((p) => p.active || p.id === form.midoraPlanId).map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </Field>
+```
+e o `PATCH` inclui `midoraPlanId`.
+- O teste da Task 4 que verifica o corpo do `PATCH` usa `toMatchObject`, então continua válido; o mock do teste da Task 4 precisa responder `GET /api/admin/midora-plans` com `{ plans: [] }` — acrescentar essa rota aos dois testes de parceiros da Task 4.
+
+`apps/web/src/ui.tsx`: menu do admin ganha `{ to: '/admin/planos-midora', label: 'Planos Midora', icon: <IconReceipt size={18} /> }` (entre Parceiros e Institucionais).
+`apps/web/src/App.tsx`: `<Route path="planos-midora" element={<MidoraPlans />} />` sob `/admin`.
+Na tela de planos do parceiro (Task 5), o título passa a ser **"Planos de anúncio"** e o item de menu idem; ajustar o teste da Task 3 (link `Planos` → `/Planos de anúncio/`) e o da Task 5.
+
+- [ ] **Step 5: Rodar e commit**
+
+Run: `pnpm lint && pnpm typecheck && pnpm test`
+Expected: tudo verde.
+```bash
+git add apps/api apps/web
+git commit -m "feat: add Midora plans catalog and assign a plan to each partner
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
 ### Task 5: Telas do parceiro — anunciantes, planos e conta da TV
 
 **Files:**
@@ -2575,6 +2933,6 @@ Expected: CI verde. Depois: revisão final, correções, merge na `main` (autori
 ## Critério de aceite da Etapa 2b
 
 - Todos os testes de web e API verdes local e no CI.
-- No modo demo: parceiro cadastra anunciante e plano, cria campanha, envia mídia, envia para aprovação e aprova; anunciante autocadastrado cria e acompanha campanha, vê motivo de correção e reenvia; admin cria parceiro, usuário e institucional.
+- No modo demo: super admin cadastra um Plano Midora e o vincula ao parceiro; parceiro cadastra anunciante e plano, cria campanha, envia mídia, envia para aprovação e aprova; anunciante autocadastrado cria e acompanha campanha, vê motivo de correção e reenvia; admin cria parceiro, usuário e institucional.
 - Temas claro e noturno com esmeralda, botão lua/sol, persistência e sem piscar.
 - Produção atualizada com o painel acessível em `/entrar`.
