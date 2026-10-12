@@ -6,7 +6,8 @@ import { setSessionCookie } from '../auth/plugin';
 import { createSession } from '../auth/sessions';
 import type { Db } from '../db/client';
 import { isUniqueViolation } from '../db/errors';
-import { advertisers, partners, plans, users } from '../db/schema';
+import { isValidDocument, onlyDigits } from '../catalog/document';
+import { PERSON_TYPES, advertisers, partners, plans, users } from '../db/schema';
 import { parse } from '../http/validation';
 
 const SlugParams = z.object({ slug: z.string().max(60) });
@@ -16,6 +17,8 @@ const Signup = z
     contactName: z.string().trim().min(1).max(120),
     email: z.string().trim().toLowerCase().pipe(z.email()),
     phone: z.string().trim().min(3).max(40).optional(),
+    personType: z.enum(PERSON_TYPES),
+    document: z.string().transform(onlyDigits),
     password: z.string().min(8).max(200),
   })
   .strict();
@@ -53,6 +56,7 @@ export const publicRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean }>
       if (!params) return reply;
       const body = parse(Signup, req.body, reply);
       if (!body) return reply;
+      if (!isValidDocument(body.personType, body.document)) return reply.code(400).send({ error: 'invalid_document' });
       const partner = await activePartner(params.slug);
       if (!partner) return reply.code(404).send({ error: 'not_found' });
       const passwordHash = await hashPassword(body.password);
@@ -66,6 +70,8 @@ export const publicRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean }>
               contactName: body.contactName,
               email: body.email,
               phone: body.phone ?? null,
+              personType: body.personType,
+              document: body.document,
               source: 'self_signup',
             })
             .returning();
@@ -79,6 +85,7 @@ export const publicRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean }>
         setSessionCookie(reply, token, expiresAt, cookieSecure);
         return reply.code(201).send({ user });
       } catch (err) {
+        if (isUniqueViolation(err, 'advertisers_partner_document_uq')) return reply.code(409).send({ error: 'document_taken' });
         if (isUniqueViolation(err)) return reply.code(409).send({ error: 'email_taken' });
         throw err;
       }
