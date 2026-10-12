@@ -5,6 +5,10 @@ export interface Config {
   playerDir?: string;
   version: string;
   logLevel: string;
+  databaseUrl?: string;
+  cookieSecure: boolean;
+  adminEmail?: string;
+  adminPassword?: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -20,5 +24,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     playerDir: env.PLAYER_DIR || undefined,
     version: env.APP_VERSION ?? env.SOURCE_COMMIT ?? 'dev',
     logLevel: env.LOG_LEVEL ?? 'info',
+    databaseUrl: env.DATABASE_URL || undefined,
+    cookieSecure: env.COOKIE_SECURE === 'true',
+    adminEmail: env.ADMIN_EMAIL || undefined,
+    adminPassword: env.ADMIN_PASSWORD || undefined,
   };
 }

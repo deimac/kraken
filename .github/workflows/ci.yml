@@ -29,11 +29,17 @@ jobs:
         run: docker build -t midora:ci .
       - name: Smoke test
         run: |
-          docker run -d --name midora -p 3000:3000 midora:ci
-          for i in $(seq 1 20); do
+          docker network create midora-ci
+          docker run -d --name db --network midora-ci -e POSTGRES_PASSWORD=ci -e POSTGRES_DB=midora postgres:16-alpine
+          for i in $(seq 1 30); do docker exec db pg_isready -U postgres && break; sleep 1; done
+          docker run -d --name midora --network midora-ci -p 3000:3000 \
+            -e DATABASE_URL=postgres://postgres:ci@db:5432/midora midora:ci
+          for i in $(seq 1 30); do
             curl -sf http://127.0.0.1:3000/api/health && break
             sleep 1
           done
           curl -sf http://127.0.0.1:3000/api/health | grep '"status":"ok"'
           curl -sf http://127.0.0.1:3000/player/ | grep 'Midora Player'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/nao-existe)" = 404
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/auth/me)" = 401
+          docker logs midora | grep -q 'Server listening'

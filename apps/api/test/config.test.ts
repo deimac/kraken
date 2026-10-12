@@ -10,17 +10,23 @@ describe('loadConfig', () => {
       playerDir: undefined,
       version: 'dev',
       logLevel: 'info',
+      databaseUrl: undefined,
+      cookieSecure: false,
+      adminEmail: undefined,
+      adminPassword: undefined,
     });
   });
 
   it('reads env values', () => {
     const c = loadConfig({
       PORT: '8080', HOST: '127.0.0.1', WEB_DIR: '/w', PLAYER_DIR: '/p',
-      APP_VERSION: '1.2.3', LOG_LEVEL: 'debug',
+      APP_VERSION: '1.2.3', LOG_LEVEL: 'debug', DATABASE_URL: 'postgres://x',
+      COOKIE_SECURE: 'true', ADMIN_EMAIL: 'a@b.com', ADMIN_PASSWORD: 'secret-pass-123',
     });
     expect(c).toEqual({
       port: 8080, host: '127.0.0.1', webDir: '/w', playerDir: '/p',
-      version: '1.2.3', logLevel: 'debug',
+      version: '1.2.3', logLevel: 'debug', databaseUrl: 'postgres://x',
+      cookieSecure: true, adminEmail: 'a@b.com', adminPassword: 'secret-pass-123',
     });
   });
 

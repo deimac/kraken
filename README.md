@@ -14,13 +14,21 @@ Plataforma para exibir anúncios em TVs de estabelecimentos parceiros e contabil
 
 ## Desenvolvimento
 
-Requisitos: Node 24+, pnpm 10.
+Requisitos: Node 24+, pnpm 10. Os testes usam PGlite (Postgres embutido) e não precisam de banco.
 
 ```bash
 pnpm install
-pnpm dev:api      # http://localhost:3000/api/health
+pnpm test
+```
+
+Para rodar a API localmente é preciso um Postgres (ex.: `brew services start postgresql@16` e `createdb midora`):
+
+```bash
+DATABASE_URL=postgres://localhost/midora ADMIN_EMAIL=admin@local.test ADMIN_PASSWORD=<12+ caracteres> pnpm dev:api
 pnpm dev:web      # painel, com proxy de /api para a API
 pnpm dev:player   # player, com proxy de /api para a API
 ```
+
+Migrações: alterar `apps/api/src/db/schema.ts` e rodar `pnpm --filter @midora/api db:generate`. Elas são aplicadas no start da API.
 
 Verificações: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
