@@ -6,12 +6,10 @@ import { Partners } from './pages/admin/Partners';
 import { CampaignList } from './pages/campaigns/CampaignList';
 import { Home, TvNotice } from './pages/Home';
 import { Login } from './pages/Login';
+import { Advertisers } from './pages/partner/Advertisers';
 import { Plans } from './pages/partner/Plans';
+import { TvAccount } from './pages/partner/TvAccount';
 import { Layout } from './ui';
-
-function Placeholder({ title }: { title: string }) {
-  return <h1>{title}</h1>;
-}
 
 export function AppRoutes() {
   return (
@@ -26,9 +24,9 @@ export function AppRoutes() {
       </Route>
       <Route path="/parceiro" element={<RequireRole role="partner_user"><Layout role="partner_user" /></RequireRole>}>
         <Route path="campanhas" element={<CampaignList base="/parceiro" />} />
-        <Route path="anunciantes" element={<Placeholder title="Anunciantes" />} />
+        <Route path="anunciantes" element={<Advertisers />} />
         <Route path="planos" element={<Plans />} />
-        <Route path="tv" element={<Placeholder title="Conta da TV" />} />
+        <Route path="tv" element={<TvAccount />} />
       </Route>
       <Route path="/anunciante" element={<RequireRole role="advertiser"><Layout role="advertiser" /></RequireRole>}>
         <Route path="campanhas" element={<CampaignList base="/anunciante" />} />
