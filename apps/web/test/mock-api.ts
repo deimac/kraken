@@ -19,7 +19,7 @@ export function mockApi(routes: Record<string, Handler>): Call[] {
       calls.push({ method, path, body, form, contentType: headers.get('content-type') });
       const handler = routes[`${method} ${path}`] ?? routes[`${method} ${path.split('?')[0]}`];
       if (handler === undefined) return new Response(JSON.stringify({ error: 'not_found' }), { status: 404 });
-      const out = typeof handler === 'function' ? (handler as (b: unknown) => unknown)(body ?? form) : handler;
+      const out = await (typeof handler === 'function' ? (handler as (b: unknown) => unknown)(body ?? form) : handler);
       const r: Reply = out && typeof out === 'object' && '__reply' in out ? (out as Reply) : reply(200, out);
       if (r.status === 204) return new Response(null, { status: 204 });
       return new Response(JSON.stringify(r.json ?? {}), { status: r.status, headers: { 'content-type': 'application/json' } });
