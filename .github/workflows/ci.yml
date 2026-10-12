@@ -39,7 +39,7 @@ jobs:
             sleep 1
           done
           curl -sf http://127.0.0.1:3000/api/health | grep '"status":"ok"'
-          curl -sf http://127.0.0.1:3000/player/ | grep 'Midora Player'
+          curl -sf http://127.0.0.1:3000/player/ | grep 'Kraken Ads Player'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/nao-existe)" = 404
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/auth/me)" = 401
           docker logs midora | grep -q 'Server listening'

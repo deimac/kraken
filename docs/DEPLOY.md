@@ -67,7 +67,7 @@ Variáveis novas no Coolify vêm marcadas como "Build Variable"; desmarque nas q
 ## Verificar
 
 - `GET /api/health` → `{"status":"ok","version":"<commit>"}`.
-- `GET /player/` → página "Midora Player".
+- `GET /player/` → página "Kraken Ads Player".
 - Logs: Coolify → midora → Logs (JSON, segredos redigidos).
 
 ## Reverter
