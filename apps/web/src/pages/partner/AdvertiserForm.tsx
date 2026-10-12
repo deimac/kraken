@@ -74,7 +74,7 @@ export function AdvertiserForm() {
     <>
       <PageHeader title={editing ? 'Editar anunciante' : 'Novo anunciante'} />
       {error && <Notice kind="error">{error}</Notice>}
-      <form className="card form" onSubmit={submit}>
+      <form className="card form form-wide" onSubmit={submit}>
         <fieldset className="form-section">
           <legend><IconId size={18} />Identificação</legend>
           <div className="form-row">

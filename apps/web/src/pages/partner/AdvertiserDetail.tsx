@@ -58,7 +58,7 @@ export function AdvertiserDetail() {
 
   if (!data) return error ? <Notice kind="error">{error}</Notice> : <div className="muted">Carregando…</div>;
   const a = data.advertiser;
-  const live = data.campaigns.filter((c) => c.effectiveStatus === 'active').length;
+  const live = a.archivedAt ? 0 : data.campaigns.filter((c) => c.effectiveStatus === 'active').length;
   const rows: [string, string][] = [
     [a.personType === 'pf' ? 'CPF' : 'CNPJ', formatDocument(a.document) || '—'],
     ...(a.personType === 'pj' ? ([['Razão social', a.legalName ?? '—']] as [string, string][]) : []),

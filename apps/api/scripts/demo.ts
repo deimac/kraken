@@ -52,7 +52,11 @@ const [partner] = await db
   .returning();
 const [advertiser] = await db
   .insert(schema.advertisers)
-  .values({ partnerId: partner!.id, name: 'Loja Demo', source: 'self_signup', email: 'anunciante@demo.test' })
+  .values({
+    partnerId: partner!.id, name: 'Loja Demo', source: 'self_signup', email: 'anunciante@demo.test',
+    personType: 'pj', document: '11222333000181', legalName: 'Loja Demo Comércio LTDA', contactName: 'Bia',
+    phone: '11987654321', zip: '01001000', street: 'Praça da Sé', number: '100', district: 'Sé', city: 'São Paulo', state: 'SP',
+  })
   .returning();
 const hash = await hashPassword(DEMO_PASSWORD);
 await db.insert(schema.users).values([

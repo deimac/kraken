@@ -29,6 +29,7 @@ Merge/push na `main` dispara build e deploy automáticos. O CI (`.github/workflo
 
 - Postgres 18 `kraken-db` (`7lymsttm2meffka7lits7sqs`) no projeto `kraken`, sem acesso público, limite 512 MB.
 - Migrações (`apps/api/drizzle/`) são aplicadas automaticamente no start da aplicação.
+- `0006_advertisers_details` só adiciona colunas (tipo de pessoa, CPF/CNPJ, endereço, arquivamento) e um índice único de documento por parceiro; anunciantes antigos ficam sem documento até serem editados.
 
 ## Mídia
 

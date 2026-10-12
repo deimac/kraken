@@ -2,7 +2,7 @@ import { IconArchive, IconBuildingStore, IconPlus, IconSpeakerphone, IconUser, I
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { api } from '../../api';
-import { formatDocument } from '../../format';
+import { formatDocument, maskPhone } from '../../format';
 import { errorMessage } from '../../messages';
 import type { Advertiser } from '../../types';
 import { EmptyState, Notice, PageHeader, SearchInput, StatCard } from '../../ui';
@@ -74,7 +74,7 @@ export function Advertisers() {
                 {a.source === 'self_signup' && <span className="chip">autocadastro</span>}
               </div>
               <div className="row-sub">
-                {[formatDocument(a.document), a.city && `${a.city}${a.state ? `/${a.state}` : ''}`, a.contactName, a.email, a.phone]
+                {[formatDocument(a.document), a.city && `${a.city}${a.state ? `/${a.state}` : ''}`, a.contactName, a.email, a.phone && maskPhone(a.phone)]
                   .filter(Boolean)
                   .join(' · ') || 'Sem dados de contato'}
               </div>
