@@ -13,4 +13,17 @@ describe('api', () => {
     await expect(api('/no')).rejects.toBeInstanceOf(ApiError);
     await expect(api('/no')).rejects.toMatchObject({ status: 401, code: 'unauthenticated' });
   });
+
+  it('aborts requests that hang', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => new Promise((_r, reject) => {
+      init.signal!.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+    })));
+    const p = api('/slow', { timeoutMs: 1000 });
+    const assertion = expect(p).rejects.toThrow();
+    await vi.advanceTimersByTimeAsync(1000);
+    await assertion;
+    vi.useRealTimers();
+  });
 });
+

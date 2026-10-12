@@ -70,36 +70,48 @@ export class DomScreen implements Screen {
     const layer = this.layers[1 - this.active]!;
     this.release(layer);
     if (item.media.mediaType === 'image') {
-      layer.img.src = item.media.url;
-      const decoded = layer.img.decode
-        ? layer.img.decode().then(
-            () => true,
-            () => false,
-          )
-        : Promise.resolve(true);
-      return withTimeout(decoded, this.loadTimeoutMs, false);
+      const img = layer.img;
+      const loaded = new Promise<boolean>((resolve) => {
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+      });
+      img.src = item.media.url;
+      // decode() also waits for decoding; older TV browsers only have load/error.
+      const ready = img.decode ? img.decode().then(() => true, () => false) : loaded;
+      const ok = await withTimeout(ready, this.loadTimeoutMs, false);
+      img.onload = img.onerror = null;
+      return ok;
     }
     const video = layer.video;
+    let finish!: (ok: boolean) => void;
     const ready = new Promise<boolean>((resolve) => {
-      const done = (ok: boolean) => {
-        video.removeEventListener('canplaythrough', onReady);
-        video.removeEventListener('error', onError);
-        resolve(ok);
-      };
-      const onReady = () => done(true);
-      const onError = () => done(false);
-      video.addEventListener('canplaythrough', onReady);
-      video.addEventListener('error', onError);
+      finish = resolve;
     });
+    const onReady = () => finish(true);
+    const onError = () => finish(false);
+    // Some TV browsers fire canplay but never canplaythrough.
+    video.addEventListener('canplay', onReady);
+    video.addEventListener('canplaythrough', onReady);
+    video.addEventListener('error', onError);
     video.src = item.media.url;
     video.load();
-    return withTimeout(ready, this.loadTimeoutMs, false);
+    const ok = await withTimeout(ready, this.loadTimeoutMs, false);
+    video.removeEventListener('canplay', onReady);
+    video.removeEventListener('canplaythrough', onReady);
+    video.removeEventListener('error', onError);
+    return ok || video.readyState >= 3; // HAVE_FUTURE_DATA: enough to start
   }
 
   async present(item: Item): Promise<PlayResult> {
-    const nextIndex = 1 - this.active;
+    const previous = this.active;
+    const nextIndex = 1 - previous;
     const incoming = this.layers[nextIndex]!;
-    const outgoing = this.layers[this.active]!;
+    const outgoing = this.layers[previous]!;
+    // Lock synchronously: preload() must not touch the outgoing layer until the transition ends.
+    let unlock!: () => void;
+    this.freeAt = new Promise<void>((r) => {
+      unlock = r;
+    });
     this.active = nextIndex;
 
     const isVideo = item.media.mediaType === 'video';
@@ -110,6 +122,8 @@ export class DomScreen implements Screen {
       try {
         await incoming.video.play();
       } catch {
+        this.active = previous; // the current ad stays on screen
+        unlock();
         return 'failed';
       }
     }
@@ -118,9 +132,10 @@ export class DomScreen implements Screen {
     incoming.el.classList.add('on');
     outgoing.el.classList.remove('on');
     outgoing.el.classList.add('out');
-    this.freeAt = sleep(this.transitionMs + 50).then(() => {
+    void sleep(this.transitionMs + 50).then(() => {
       outgoing.el.classList.remove('out');
       outgoing.video.pause();
+      unlock();
     });
 
     if (!isVideo) {

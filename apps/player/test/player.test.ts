@@ -87,4 +87,41 @@ describe('runPlayer', () => {
     expect(played.slice(2)).not.toContain('A');
     expect(screen.setTransition).toHaveBeenLastCalledWith('cut', 600);
   });
+
+  it('keeps the rotation when a poll returns the same content', async () => {
+    const screen = new FakeScreen();
+    const items = [item('L', 'low'), item('M', 'medium'), item('H', 'high')];
+    const played: string[] = [];
+    await runPlayer({
+      screen, manifest: () => manifest(items.map((i) => ({ ...i }))), sleep: async () => {}, running: until(600),
+      onPlayed: (i) => played.push(i.campaignId),
+    });
+    expect(played.filter((x) => x === 'H').length).toBe(300);
+    expect(played.filter((x) => x === 'L').length).toBe(100);
+    expect(played.filter((x, i) => i > 0 && x === played[i - 1]).length).toBe(0);
+  });
+
+  it('backs off when ads fail to play', async () => {
+    const screen = new FakeScreen();
+    screen.present = vi.fn(async () => 'failed' as const);
+    const sleep = vi.fn(async () => {});
+    await runPlayer({ screen, manifest: () => manifest([item('A'), item('B')]), sleep, running: until(6), idleMs: 9000 });
+    expect(sleep).toHaveBeenCalledWith(9000);
+    expect(screen.log).toContain('waiting true');
+  });
+
+  it('drops a preloaded ad whose media was replaced', async () => {
+    const screen = new FakeScreen();
+    let current = manifest([item('A'), item('B')]);
+    const played: string[] = [];
+    await runPlayer({
+      screen, manifest: () => current, sleep: async () => {}, running: until(3),
+      onPlayed: (i) => {
+        played.push(i.media.id);
+        if (played.length === 1) current = manifest([item('A'), { ...item('B'), media: { ...item('B').media, id: 'm-B2', url: '/api/media/m-B2' } }]);
+      },
+    });
+    expect(played).not.toContain('m-B');
+  });
 });
+

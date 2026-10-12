@@ -1,26 +1,19 @@
-import { ApiError, api } from './api';
+import { api } from './api';
 import { mountControls } from './controls';
 import { DomScreen } from './dom-screen';
 import { renderLogin } from './login';
 import { createManifestClient } from './manifest';
 import { runPlayer } from './player';
+import { isTvSession } from './session';
 import './style.css';
 import type { Manifest } from './types';
+import { keepScreenOn } from './wake-lock';
 
 const root = document.getElementById('app')!;
 
-async function isTvSession(): Promise<boolean> {
-  try {
-    const r = await api<{ user: { role: string } }>('/api/auth/me');
-    return r.user.role === 'player';
-  } catch (err) {
-    if (err instanceof ApiError) return false;
-    return true; // offline at boot: try to play with whatever the server gives later
-  }
-}
-
 async function start() {
   root.innerHTML = '';
+  keepScreenOn();
   const screen = new DomScreen(root);
   screen.showWaiting(true);
   const manifest = createManifestClient(() => api<Manifest>('/api/player/manifest'), {

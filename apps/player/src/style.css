@@ -2,8 +2,13 @@ html, body, #app { margin: 0; height: 100%; background: #000; color: #f2ede6; ov
 .stage { position: fixed; top: 0; right: 0; bottom: 0; left: 0; overflow: hidden; background: #000; }
 .layer { position: absolute; top: 0; right: 0; bottom: 0; left: 0; opacity: 0; z-index: 1; transition-property: opacity, transform; transition-timing-function: ease-in-out; transition-duration: var(--t, 600ms); will-change: opacity, transform; }
 .layer.on { opacity: 1; z-index: 2; }
-.layer video, .layer img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; display: none; background: #000; }
-.layer .show { display: block; }
+.stage.fade .layer.out { opacity: 1; z-index: 1; transition-duration: 0ms; }
+.layer video, .layer img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.layer img { display: none; }
+.layer img.show { display: block; }
+/* Hidden videos stay rendered (not display:none) so TV browsers keep buffering them. */
+.layer video { visibility: hidden; }
+.layer video.show { visibility: visible; }
 .stage.slide .layer { opacity: 1; transform: translateX(100%); }
 .stage.slide .layer.on { transform: translateX(0); }
 .stage.slide .layer.out { transform: translateX(-100%); }

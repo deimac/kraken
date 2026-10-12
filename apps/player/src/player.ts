@@ -22,11 +22,18 @@ interface Deps {
   idleMs?: number;
 }
 
+/** Identity of what the rotation depends on; polls returning the same content keep the rotation. */
+function signature(m: Manifest): string {
+  const w = m.partner.weights;
+  return [w.low, w.medium, w.high, ...m.items.map((i) => `${i.campaignId}:${i.media.id}:${i.frequencyLevel}`)].join('|');
+}
+
 /** Plays ads forever, always preloading the next one while the current one is on screen. */
 export async function runPlayer(deps: Deps): Promise<void> {
   const { screen } = deps;
   const idleMs = deps.idleMs ?? 10_000;
   let source: Manifest | null = null;
+  let sourceSignature = '';
   let rotation: Rotation | null = null;
   let pending: { item: Item; ready: Promise<boolean> } | null = null;
   let failures = 0;
@@ -40,11 +47,18 @@ export async function runPlayer(deps: Deps): Promise<void> {
       continue;
     }
     if (m !== source) {
+      if (!source || m.partner.transition !== source.partner.transition || m.partner.transitionMs !== source.partner.transitionMs) {
+        screen.setTransition(m.partner.transition, m.partner.transitionMs);
+      }
       source = m;
-      rotation = createRotation(m.items, m.partner.weights);
-      screen.setTransition(m.partner.transition, m.partner.transitionMs);
-      const stillListed = pending !== null && m.items.some((i) => i.campaignId === pending!.item.campaignId);
-      if (!stillListed) pending = null;
+      const sig = signature(m);
+      if (sig !== sourceSignature) {
+        sourceSignature = sig;
+        rotation = createRotation(m.items, m.partner.weights);
+        const stillListed =
+          pending !== null && m.items.some((i) => i.campaignId === pending!.item.campaignId && i.media.id === pending!.item.media.id);
+        if (!stillListed) pending = null;
+      }
     }
     if (!pending) {
       const first = rotation!.next()!;
@@ -69,7 +83,15 @@ export async function runPlayer(deps: Deps): Promise<void> {
     const next = rotation!.next()!;
     pending = { item: next, ready: screen.preload(next) };
     const result = await playing;
-    failures = result === 'failed' ? failures + 1 : 0;
     deps.onPlayed?.(current.item, result);
+    if (result === 'completed') {
+      failures = 0;
+    } else if (++failures >= m.items.length) {
+      // Every ad refuses to play: rest instead of spinning.
+      failures = 0;
+      pending = null;
+      screen.showWaiting(true);
+      await deps.sleep(idleMs);
+    }
   }
 }
