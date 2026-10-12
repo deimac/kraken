@@ -1,7 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { api } from '../../api';
 import { errorMessage } from '../../messages';
-import type { Partner } from '../../types';
+import type { MidoraPlan, Partner } from '../../types';
 import { Field, Notice, PageHeader } from '../../ui';
 
 export function slugify(name: string): string {
@@ -16,6 +16,7 @@ export function slugify(name: string): string {
 
 export function Partners() {
   const [partners, setPartners] = useState<Partner[]>([]);
+  const [plans, setPlans] = useState<MidoraPlan[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -26,7 +27,10 @@ export function Partners() {
 
   useEffect(() => {
     api<{ partners: Partner[] }>('/api/admin/partners').then((r) => setPartners(r.partners)).catch((e) => setError(errorMessage(e)));
+    api<{ plans: MidoraPlan[] }>('/api/admin/midora-plans').then((r) => setPlans(r.plans)).catch((e) => setError(errorMessage(e)));
   }, []);
+
+  const planName = (id: string | null) => plans.find((p) => p.id === id)?.name;
 
   async function create(e: FormEvent) {
     e.preventDefault();
@@ -59,7 +63,10 @@ export function Partners() {
             <div className="row">
               <div className="row-main">
                 <div>{p.name}</div>
-                <div className="row-sub">/p/{p.slug} · institucionais {p.showInstitutional ? 'sim' : 'não'}</div>
+                <div className="row-sub">
+                  /p/{p.slug} · {planName(p.midoraPlanId) ? `Plano Midora: ${planName(p.midoraPlanId)}` : 'sem Plano Midora'} · institucionais{' '}
+                  {p.showInstitutional ? 'sim' : 'não'}
+                </div>
               </div>
               <span className={`badge ${p.status === 'active' ? 'badge-active' : 'badge-off'}`}>{p.status === 'active' ? 'Ativo' : 'Inativo'}</span>
               <button className="btn" type="button" aria-label={`Editar ${p.name}`} onClick={() => setEditing(editing === p.id ? null : p.id)}>
@@ -67,7 +74,7 @@ export function Partners() {
               </button>
             </div>
             {editing === p.id && (
-              <PartnerEditor partner={p} onSaved={(np) => setPartners((list) => list.map((x) => (x.id === np.id ? np : x)))} />
+              <PartnerEditor partner={p} plans={plans} onSaved={(np) => setPartners((list) => list.map((x) => (x.id === np.id ? np : x)))} />
             )}
           </div>
         ))}
@@ -109,7 +116,7 @@ export function Partners() {
   );
 }
 
-function PartnerEditor({ partner, onSaved }: { partner: Partner; onSaved(p: Partner): void }) {
+function PartnerEditor({ partner, plans, onSaved }: { partner: Partner; plans: MidoraPlan[]; onSaved(p: Partner): void }) {
   const [form, setForm] = useState(partner);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [email, setEmail] = useState('');
@@ -126,10 +133,10 @@ function PartnerEditor({ partner, onSaved }: { partner: Partner; onSaved(p: Part
     e.preventDefault();
     setBusy(true);
     try {
-      const { name, status, showInstitutional, weightLow, weightMedium, weightHigh, defaultImageSeconds } = form;
+      const { name, status, showInstitutional, weightLow, weightMedium, weightHigh, defaultImageSeconds, midoraPlanId } = form;
       const r = await api<{ partner: Partner }>(`/api/admin/partners/${partner.id}`, {
         method: 'PATCH',
-        body: { name, status, showInstitutional, weightLow, weightMedium, weightHigh, defaultImageSeconds },
+        body: { name, status, showInstitutional, weightLow, weightMedium, weightHigh, defaultImageSeconds, midoraPlanId: midoraPlanId ?? null },
       });
       onSaved(r.partner);
       setMsg({ kind: 'ok', text: 'Alterações salvas.' });
@@ -164,6 +171,16 @@ function PartnerEditor({ partner, onSaved }: { partner: Partner; onSaved(p: Part
           <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Partner['status'] })}>
             <option value="active">Ativo</option>
             <option value="inactive">Inativo (desconecta usuários e TVs)</option>
+          </select>
+        </Field>
+        <Field label="Plano Midora">
+          <select value={form.midoraPlanId ?? ''} onChange={(e) => setForm({ ...form, midoraPlanId: e.target.value || null })}>
+            <option value="">Sem plano</option>
+            {plans
+              .filter((p) => p.active || p.id === form.midoraPlanId)
+              .map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
           </select>
         </Field>
         <label className="check">

@@ -6,8 +6,9 @@ export type EffectiveStatus = CampaignStatus | 'scheduled' | 'active' | 'ended';
 export interface User { id: string; email: string; role: Role; partnerId: string | null; advertiserId: string | null }
 export interface Partner {
   id: string; name: string; slug: string; status: 'active' | 'inactive'; showInstitutional: boolean;
-  weightLow: number; weightMedium: number; weightHigh: number; defaultImageSeconds: number;
+  weightLow: number; weightMedium: number; weightHigh: number; defaultImageSeconds: number; midoraPlanId: string | null;
 }
+export interface MidoraPlan { id: string; name: string; description: string; priceCents: number | null; active: boolean }
 export interface Advertiser { id: string; name: string; contactName: string | null; email: string | null; phone: string | null; source: 'manual' | 'self_signup' }
 export interface Plan { id: string; name: string; description: string; frequencyLevel: FrequencyLevel; active?: boolean }
 export interface Campaign {

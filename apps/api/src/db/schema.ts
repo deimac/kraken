@@ -11,6 +11,19 @@ const timestamps = {
     .$onUpdate(() => new Date()),
 };
 
+export const midoraPlans = pgTable(
+  'midora_plans',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    description: text('description').notNull().default(''),
+    priceCents: integer('price_cents'),
+    active: boolean('active').notNull().default(true),
+    ...timestamps,
+  },
+  (t) => [check('midora_plans_price_check', sql`${t.priceCents} is null or ${t.priceCents} >= 0`)],
+);
+
 export const partners = pgTable(
   'partners',
   {
@@ -23,6 +36,7 @@ export const partners = pgTable(
     weightHigh: integer('weight_high').notNull().default(3),
     defaultImageSeconds: integer('default_image_seconds').notNull().default(10),
     showInstitutional: boolean('show_institutional').notNull().default(false),
+    midoraPlanId: uuid('midora_plan_id').references(() => midoraPlans.id, { onDelete: 'restrict' }),
     ...timestamps,
   },
   (t) => [

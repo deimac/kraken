@@ -15,6 +15,13 @@
       "when": 1791803098766,
       "tag": "0001_campaigns",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791807155297,
+      "tag": "0002_midora_plans",
+      "breakpoints": true
     }
   ]
 }

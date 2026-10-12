@@ -40,3 +40,18 @@ export function lastDay(endsAt: string): string {
   d.setDate(d.getDate() - 1);
   return d.toLocaleDateString('pt-BR');
 }
+
+const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+export function formatMoney(cents: number | null): string {
+  return cents === null ? 'Sem valor definido' : BRL.format(cents / 100);
+}
+
+/** "1.234,56" → 123456; "" → null; invalid → undefined. */
+export function parseMoney(text: string): number | null | undefined {
+  const t = text.trim();
+  if (t === '') return null;
+  if (!/^\d{1,3}(\.\d{3})+(,\d{1,2})?$|^\d+(,\d{1,2})?$/.test(t)) return undefined;
+  const [int = '0', dec = ''] = t.replace(/\./g, '').split(',');
+  return Number(int) * 100 + Number(dec.padEnd(2, '0'));
+}

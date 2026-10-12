@@ -21,6 +21,7 @@ describe('admin partners', () => {
     const calls = mockApi({
       'GET /api/auth/me': { user: adminUser },
       'GET /api/admin/partners': { partners: [partner] },
+      'GET /api/admin/midora-plans': { plans: [] },
       'POST /api/admin/partners': (b: unknown) => ({ partner: { ...partner, id: 'p2', ...(b as object) } }),
     });
     renderAt('/admin/parceiros');
@@ -35,6 +36,7 @@ describe('admin partners', () => {
     const calls = mockApi({
       'GET /api/auth/me': { user: adminUser },
       'GET /api/admin/partners': { partners: [partner] },
+      'GET /api/admin/midora-plans': { plans: [] },
       'PATCH /api/admin/partners/p1': (b: unknown) => ({ partner: { ...partner, ...(b as object) } }),
       'POST /api/admin/partners/p1/users': { user: { id: 'u9', email: 'g@iron.com', role: 'partner_user' } },
     });

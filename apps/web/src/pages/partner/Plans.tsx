@@ -6,5 +6,5 @@ export function Plans() {
   useEffect(() => {
     api('/api/partner/plans').catch(() => undefined);
   }, []);
-  return <PageHeader title="Planos" />;
+  return <PageHeader title="Planos de anúncio" />;
 }

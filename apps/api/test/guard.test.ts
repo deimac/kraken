@@ -20,6 +20,7 @@ const PROTECTED: [string, string][] = [
   ['GET', '/api/admin/campaigns'], ['POST', '/api/admin/campaigns'], ['POST', `/api/admin/campaigns/${ID}/media`],
   ['POST', `/api/admin/campaigns/${ID}/cancel`],
   ['GET', `/api/media/${ID}`],
+  ['GET', '/api/admin/midora-plans'], ['POST', '/api/admin/midora-plans'], ['PATCH', `/api/admin/midora-plans/${ID}`],
 ];
 
 it.each(PROTECTED)('%s %s requires a session', async (method, url) => {
