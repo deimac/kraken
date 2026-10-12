@@ -4,12 +4,16 @@ import { ensureAdmin } from './bootstrap';
 import { loadConfig } from './config';
 import { createDb } from './db/client';
 import { loggerOptions } from './logger';
+import { LocalStorage } from './storage/local';
 
 const config = loadConfig();
 if (!config.databaseUrl) throw new Error('DATABASE_URL is required');
 
 const database = createDb(config.databaseUrl);
 await database.migrate(fileURLToPath(new URL('../drizzle', import.meta.url)));
+
+const storage = new LocalStorage(config.mediaDir);
+await storage.init();
 
 const app = await buildApp({
   version: config.version,
@@ -18,6 +22,8 @@ const app = await buildApp({
   playerDir: config.playerDir,
   db: database.db,
   cookieSecure: config.cookieSecure,
+  storage,
+  uploadLimits: { maxImageBytes: config.maxImageMb * 1024 * 1024, maxVideoBytes: config.maxVideoMb * 1024 * 1024 },
 });
 
 database.pool.on('error', (err) => app.log.error({ err }, 'postgres pool error'));

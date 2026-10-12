@@ -9,6 +9,17 @@ export interface Config {
   cookieSecure: boolean;
   adminEmail?: string;
   adminPassword?: string;
+  mediaDir: string;
+  maxImageMb: number;
+  maxVideoMb: number;
+}
+
+function positiveNumber(env: NodeJS.ProcessEnv, name: string, fallback: number): number {
+  const raw = env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) throw new Error(`Invalid ${name}: ${raw}`);
+  return n;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -28,5 +39,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     cookieSecure: env.COOKIE_SECURE !== 'false',
     adminEmail: env.ADMIN_EMAIL || undefined,
     adminPassword: env.ADMIN_PASSWORD || undefined,
+    mediaDir: env.MEDIA_DIR || './data/media',
+    maxImageMb: positiveNumber(env, 'MAX_IMAGE_MB', 10),
+    maxVideoMb: positiveNumber(env, 'MAX_VIDEO_MB', 200),
   };
 }

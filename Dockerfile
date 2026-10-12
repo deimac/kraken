@@ -19,6 +19,8 @@ COPY --from=build /app/apps/api/dist ./dist
 COPY --from=build /app/apps/api/drizzle ./drizzle
 COPY --from=build /app/apps/web/dist ./web
 COPY --from=build /app/apps/player/dist ./player
+ENV MEDIA_DIR=/data/media
+RUN mkdir -p /data/media && chown node:node /data/media
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
