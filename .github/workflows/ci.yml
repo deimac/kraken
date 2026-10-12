@@ -30,7 +30,7 @@ jobs:
       - name: Smoke test
         run: |
           docker network create midora-ci
-          docker run -d --name db --network midora-ci -e POSTGRES_PASSWORD=ci -e POSTGRES_DB=midora postgres:16-alpine
+          docker run -d --name db --network midora-ci -e POSTGRES_PASSWORD=ci -e POSTGRES_DB=midora postgres:18-alpine
           for i in $(seq 1 30); do docker exec db pg_isready -U postgres && break; sleep 1; done
           docker run -d --name midora --network midora-ci -p 3000:3000 \
             -e DATABASE_URL=postgres://postgres:ci@db:5432/midora midora:ci

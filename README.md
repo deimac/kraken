@@ -21,7 +21,7 @@ pnpm install
 pnpm test
 ```
 
-Para rodar a API localmente é preciso um Postgres (ex.: `brew services start postgresql@16` e `createdb midora`):
+Para rodar a API localmente é preciso um Postgres (ex.: `brew services start postgresql@18` e `createdb midora`):
 
 ```bash
 DATABASE_URL=postgres://localhost/midora ADMIN_EMAIL=admin@local.test ADMIN_PASSWORD=<12+ caracteres> pnpm dev:api
