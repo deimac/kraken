@@ -8,7 +8,9 @@ import { LocalStorage } from '../../src/storage/local';
 import { createTestDb } from './db';
 import { createPartner, createUser, login } from './fixtures';
 
-export async function createTestApp(opts: { maxImageBytes?: number; maxVideoBytes?: number } = {}) {
+export async function createTestApp(
+  opts: { maxImageBytes?: number; maxVideoBytes?: number; minFreeBytes?: number; uploadsPerHour?: number } = {},
+) {
   const { db, close: closeDb } = await createTestDb();
   const dir = await mkdtemp(join(tmpdir(), 'midora-app-'));
   const storage = new LocalStorage(dir);
@@ -20,6 +22,8 @@ export async function createTestApp(opts: { maxImageBytes?: number; maxVideoByte
     uploadLimits: {
       maxImageBytes: opts.maxImageBytes ?? 1024 * 1024,
       maxVideoBytes: opts.maxVideoBytes ?? 4 * 1024 * 1024,
+      minFreeBytes: opts.minFreeBytes ?? 0,
+      uploadsPerHour: opts.uploadsPerHour ?? 1000,
     },
   });
   return {

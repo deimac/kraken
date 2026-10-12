@@ -15,12 +15,12 @@ export async function attachMedia(
   storage: LocalStorage,
   campaign: Campaign,
   upload: UploadOk,
-  { allowedStatuses }: { allowedStatuses: CampaignStatus[] },
+  { allowedStatuses, displaySeconds: requestedSeconds }: { allowedStatuses: CampaignStatus[]; displaySeconds?: string },
 ): Promise<Media | undefined | 'invalid_display_seconds'> {
   let displaySeconds: number | null = null;
   if (upload.mediaType === 'image') {
-    if (upload.fields.displaySeconds !== undefined) {
-      const n = Number(upload.fields.displaySeconds);
+    if (requestedSeconds !== undefined) {
+      const n = Number(requestedSeconds);
       if (!Number.isInteger(n) || n < 1 || n > 3600) {
         await rm(upload.tmpPath, { force: true });
         return 'invalid_display_seconds';

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
-import { open, rm, stat } from 'node:fs/promises';
+import { open, rm, stat, statfs } from 'node:fs/promises';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { FastifyRequest } from 'fastify';
@@ -11,6 +11,20 @@ import { probeMp4 } from './mp4';
 export interface UploadLimits {
   maxImageBytes: number;
   maxVideoBytes: number;
+  /** Uploads are refused when the disk would drop below this much free space. */
+  minFreeBytes: number;
+  uploadsPerHour: number;
+}
+
+/** Route config limiting uploads per signed-in user. */
+export function uploadRateLimit(limits: UploadLimits | undefined) {
+  return {
+    rateLimit: {
+      max: limits?.uploadsPerHour ?? 30,
+      timeWindow: '1 hour',
+      keyGenerator: (req: FastifyRequest) => req.user?.id ?? req.ip,
+    },
+  };
 }
 
 export type UploadOk = {
@@ -22,9 +36,8 @@ export type UploadOk = {
   sizeBytes: number;
   sha256: string;
   durationMs: number | null;
-  fields: Record<string, string>;
 };
-export type UploadFail = { ok: false; status: 400 | 413 | 415; error: string };
+export type UploadFail = { ok: false; status: 400 | 413 | 415 | 507; error: string };
 
 const IMAGE_EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 const VIDEO_CODECS = new Set(['avc1', 'avc3']);
@@ -35,14 +48,13 @@ export async function receiveUpload(
   limits: UploadLimits,
 ): Promise<UploadOk | UploadFail> {
   if (!req.isMultipart()) return { ok: false, status: 400, error: 'file_required' };
+  // Media shares the disk with Postgres: never let uploads fill it.
+  const fs = await statfs(storage.root);
+  if (fs.bavail * fs.bsize - limits.maxVideoBytes < limits.minFreeBytes) {
+    return { ok: false, status: 507, error: 'storage_full' };
+  }
   const part = await req.file({ limits: { fileSize: Math.max(limits.maxImageBytes, limits.maxVideoBytes), files: 1 } });
   if (!part) return { ok: false, status: 400, error: 'file_required' };
-
-  const fields: Record<string, string> = {};
-  for (const [name, value] of Object.entries(part.fields)) {
-    const f = Array.isArray(value) ? value[0] : value;
-    if (f && f.type === 'field') fields[name] = String(f.value);
-  }
 
   const tmpPath = storage.tmpPath();
   const fail = async (status: UploadFail['status'], error: string): Promise<UploadFail> => {
@@ -71,7 +83,7 @@ export async function receiveUpload(
   const fh = await open(tmpPath, 'r');
   await fh.read(head, 0, 16, 0);
   await fh.close();
-  const base = { ok: true as const, tmpPath, sizeBytes: size, sha256: hash.digest('hex'), fields };
+  const base = { ok: true as const, tmpPath, sizeBytes: size, sha256: hash.digest('hex') };
 
   const imageMime = detectImageMime(head);
   if (imageMime) {

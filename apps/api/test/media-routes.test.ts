@@ -12,8 +12,8 @@ let campaignId: string;
 const req = (method: 'GET' | 'POST', url: string, cookie?: string, payload?: unknown, headers: Record<string, string> = {}) =>
   t.app.inject({ method, url, headers: { ...(cookie ? { cookie } : {}), ...headers }, payload: payload as object });
 
-const upload = (url: string, cookie: string, file: { filename: string; contentType: string; data: Buffer }, fields?: Record<string, string>) => {
-  const m = multipart(file, fields);
+const upload = (url: string, cookie: string, file: { filename: string; contentType: string; data: Buffer }) => {
+  const m = multipart(file);
   return t.app.inject({ method: 'POST', url, headers: { cookie, ...m.headers }, payload: m.payload });
 };
 
@@ -32,7 +32,7 @@ afterAll(() => t.close());
 
 describe('upload validation', () => {
   it('accepts a PNG with display seconds and a valid H.264 MP4', async () => {
-    const img = await upload(`/api/campaigns/${campaignId}/media`, s.gerenteA, { filename: 'x.png', contentType: 'image/png', data: PNG_BYTES }, { displaySeconds: '15' });
+    const img = await upload(`/api/campaigns/${campaignId}/media?displaySeconds=15`, s.gerenteA, { filename: 'x.png', contentType: 'image/png', data: PNG_BYTES });
     expect(img.statusCode).toBe(201);
     expect(img.json().media).toMatchObject({ mediaType: 'image', mime: 'image/png', displaySeconds: 15, durationMs: null });
 
@@ -55,7 +55,7 @@ describe('upload validation', () => {
     expect(big.json()).toEqual({ error: 'file_too_large' });
     const tooLong = await upload(`/api/campaigns/${campaignId}/media`, s.gerenteA, { filename: 'v.mp4', contentType: 'video/mp4', data: Buffer.concat([buildMp4(), Buffer.alloc(80 * 1024)]) });
     expect(tooLong.json()).toEqual({ error: 'file_too_large' });
-    const bad = await upload(`/api/campaigns/${campaignId}/media`, s.gerenteA, { filename: 'x.png', contentType: 'image/png', data: PNG_BYTES }, { displaySeconds: '0' });
+    const bad = await upload(`/api/campaigns/${campaignId}/media?displaySeconds=0`, s.gerenteA, { filename: 'x.png', contentType: 'image/png', data: PNG_BYTES });
     expect(bad.statusCode).toBe(400);
     expect(await tmpFiles()).toEqual([]);
   });

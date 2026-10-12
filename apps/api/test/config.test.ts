@@ -17,6 +17,8 @@ describe('loadConfig', () => {
       mediaDir: './data/media',
       maxImageMb: 10,
       maxVideoMb: 200,
+      minFreeDiskMb: 2048,
+      uploadsPerHour: 30,
     });
   });
 
@@ -26,12 +28,14 @@ describe('loadConfig', () => {
       APP_VERSION: '1.2.3', LOG_LEVEL: 'debug', DATABASE_URL: 'postgres://x',
       COOKIE_SECURE: 'true', ADMIN_EMAIL: 'a@b.com', ADMIN_PASSWORD: 'secret-pass-123',
       MEDIA_DIR: '/data/media', MAX_IMAGE_MB: '5', MAX_VIDEO_MB: '100',
+      MIN_FREE_DISK_MB: '1024', UPLOADS_PER_HOUR: '10',
     });
     expect(c).toEqual({
       port: 8080, host: '127.0.0.1', webDir: '/w', playerDir: '/p',
       version: '1.2.3', logLevel: 'debug', databaseUrl: 'postgres://x',
       cookieSecure: true, adminEmail: 'a@b.com', adminPassword: 'secret-pass-123',
       mediaDir: '/data/media', maxImageMb: 5, maxVideoMb: 100,
+      minFreeDiskMb: 1024, uploadsPerHour: 10,
     });
   });
 

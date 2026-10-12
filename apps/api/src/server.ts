@@ -23,7 +23,12 @@ const app = await buildApp({
   db: database.db,
   cookieSecure: config.cookieSecure,
   storage,
-  uploadLimits: { maxImageBytes: config.maxImageMb * 1024 * 1024, maxVideoBytes: config.maxVideoMb * 1024 * 1024 },
+  uploadLimits: {
+    maxImageBytes: config.maxImageMb * 1024 * 1024,
+    maxVideoBytes: config.maxVideoMb * 1024 * 1024,
+    minFreeBytes: config.minFreeDiskMb * 1024 * 1024,
+    uploadsPerHour: config.uploadsPerHour,
+  },
 });
 
 database.pool.on('error', (err) => app.log.error({ err }, 'postgres pool error'));

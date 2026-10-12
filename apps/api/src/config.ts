@@ -12,6 +12,8 @@ export interface Config {
   mediaDir: string;
   maxImageMb: number;
   maxVideoMb: number;
+  minFreeDiskMb: number;
+  uploadsPerHour: number;
 }
 
 function positiveNumber(env: NodeJS.ProcessEnv, name: string, fallback: number): number {
@@ -42,5 +44,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     mediaDir: env.MEDIA_DIR || './data/media',
     maxImageMb: positiveNumber(env, 'MAX_IMAGE_MB', 10),
     maxVideoMb: positiveNumber(env, 'MAX_VIDEO_MB', 200),
+    minFreeDiskMb: positiveNumber(env, 'MIN_FREE_DISK_MB', 2048),
+    uploadsPerHour: positiveNumber(env, 'UPLOADS_PER_HOUR', 30),
   };
 }
