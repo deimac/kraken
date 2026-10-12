@@ -19,8 +19,8 @@ describe('TV session cookie', () => {
   it('signs the TV in with its own cookie, separate from the panel', async () => {
     const res = await req('POST', '/api/player/login', undefined, { email: 'tv@parceiro-a', password: 'senha-tv-123' });
     expect(res.statusCode).toBe(200);
-    expect(res.cookies.map((c) => c.name)).toEqual(['midora_tv']);
-    const tv = `midora_tv=${res.cookies[0]!.value}`;
+    expect(res.cookies.map((c) => c.name)).toEqual(['kraken_tv']);
+    const tv = `kraken_tv=${res.cookies[0]!.value}`;
     expect((await req('GET', '/api/player/me', tv)).json().user).toMatchObject({ role: 'player' });
     expect((await req('GET', '/api/auth/me', tv)).statusCode).toBe(401);
   });
@@ -38,7 +38,7 @@ describe('TV session cookie', () => {
     const res = await req('POST', '/api/player/login', undefined, { email: 'g@a.com', password: 'senha-forte-1' });
     expect(res.statusCode).toBe(403);
     expect(res.json()).toEqual({ error: 'not_tv_account' });
-    expect(res.cookies.find((c) => c.name === 'midora_tv')).toBeUndefined();
+    expect(res.cookies.find((c) => c.name === 'kraken_tv')).toBeUndefined();
   });
 
   it('TV logout ends only the TV session', async () => {
@@ -46,7 +46,7 @@ describe('TV session cookie', () => {
     const both = `${s.gerenteA}; ${tv}`;
     const out = await req('POST', '/api/player/logout', both);
     expect(out.statusCode).toBe(204);
-    expect(out.cookies.find((c) => c.name === 'midora_tv')?.value).toBe('');
+    expect(out.cookies.find((c) => c.name === 'kraken_tv')?.value).toBe('');
     expect((await req('GET', '/api/player/manifest', tv)).statusCode).toBe(401);
     expect((await req('GET', '/api/partner', s.gerenteA)).statusCode).toBe(200);
   });

@@ -36,7 +36,7 @@ describe('login', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().user).toMatchObject({ email: 'gerente@ironberg.com', role: 'partner_user' });
     expect(res.json().user.passwordHash).toBeUndefined();
-    const c = res.cookies.find((x) => x.name === 'midora_session');
+    const c = res.cookies.find((x) => x.name === 'kraken_session');
     expect(c?.httpOnly).toBe(true);
     expect(c?.sameSite).toBe('Lax');
     expect(c?.path).toBe('/');
@@ -73,7 +73,7 @@ describe('me and logout', () => {
   });
 
   it('returns 401 (not 500) for forged and expired cookies', async () => {
-    expect((await getMe('midora_session=forjado')).statusCode).toBe(401);
+    expect((await getMe('kraken_session=forjado')).statusCode).toBe(401);
     const cookie = await login(app, 'gerente@ironberg.com', 'senha-forte-1');
     await db.update(sessions).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(sessions.userId, partnerUserId));
     expect((await getMe(cookie)).statusCode).toBe(401);
@@ -83,7 +83,7 @@ describe('me and logout', () => {
     const cookie = await login(app, 'admin@midora.com', 'senha-admin-1');
     const res = await post('/api/auth/logout', undefined, cookie);
     expect(res.statusCode).toBe(204);
-    expect(res.cookies.find((x) => x.name === 'midora_session')?.value).toBe('');
+    expect(res.cookies.find((x) => x.name === 'kraken_session')?.value).toBe('');
     expect((await getMe(cookie)).statusCode).toBe(401);
   });
 });

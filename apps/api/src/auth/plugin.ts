@@ -10,9 +10,9 @@ import { requireRole } from './guard';
 import { dummyVerify, verifyPassword } from './password';
 import { createSession, deleteSession, findSessionUser, type SessionUser } from './sessions';
 
-export const SESSION_COOKIE = 'midora_session';
+export const SESSION_COOKIE = 'kraken_session';
 /** TV players keep their own session so a panel login in the same browser doesn't replace it. */
-export const TV_COOKIE = 'midora_tv';
+export const TV_COOKIE = 'kraken_tv';
 
 declare module 'fastify' {
   interface FastifyRequest {

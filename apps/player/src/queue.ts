@@ -38,7 +38,7 @@ export function createPlayQueue(opts: {
   max?: number;
   batchSize?: number;
 }) {
-  const key = opts.key ?? 'midora-plays';
+  const key = opts.key ?? 'kraken-plays';
   // ~180 bytes per event: 20k stays well inside the ~5 MB localStorage quota.
   const max = opts.max ?? 20_000;
   const batchSize = opts.batchSize ?? 200;

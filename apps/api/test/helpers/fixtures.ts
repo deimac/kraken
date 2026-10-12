@@ -28,14 +28,14 @@ export async function createUser(
 export async function login(app: FastifyInstance, email: string, password: string): Promise<string> {
   const res = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email, password } });
   if (res.statusCode !== 200) throw new Error(`login failed: ${res.statusCode} ${res.body}`);
-  const c = res.cookies.find((x) => x.name === 'midora_session');
-  return `midora_session=${c!.value}`;
+  const c = res.cookies.find((x) => x.name === 'kraken_session');
+  return `kraken_session=${c!.value}`;
 }
 
 /** Signs in on the TV endpoint; returns the TV cookie header value. */
 export async function loginTv(app: FastifyInstance, email: string, password: string): Promise<string> {
   const res = await app.inject({ method: 'POST', url: '/api/player/login', payload: { email, password } });
   if (res.statusCode !== 200) throw new Error(`tv login failed: ${res.statusCode} ${res.body}`);
-  const c = res.cookies.find((x) => x.name === 'midora_tv');
-  return `midora_tv=${c!.value}`;
+  const c = res.cookies.find((x) => x.name === 'kraken_tv');
+  return `kraken_tv=${c!.value}`;
 }

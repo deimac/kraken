@@ -21,7 +21,7 @@ describe('error handling', () => {
 
   it('health is 503 (not 500) when the db is down even with a session cookie', async () => {
     const app = await buildApp({ version: 't', db: brokenDb });
-    const res = await app.inject({ method: 'GET', url: '/api/health', headers: { cookie: 'midora_session=abc' } });
+    const res = await app.inject({ method: 'GET', url: '/api/health', headers: { cookie: 'kraken_session=abc' } });
     expect(res.statusCode).toBe(503);
     await app.close();
   });
