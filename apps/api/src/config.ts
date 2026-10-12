@@ -25,7 +25,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     version: env.APP_VERSION ?? env.SOURCE_COMMIT ?? 'dev',
     logLevel: env.LOG_LEVEL ?? 'info',
     databaseUrl: env.DATABASE_URL || undefined,
-    cookieSecure: env.COOKIE_SECURE === 'true',
+    cookieSecure: env.COOKIE_SECURE !== 'false',
     adminEmail: env.ADMIN_EMAIL || undefined,
     adminPassword: env.ADMIN_PASSWORD || undefined,
   };

@@ -16,7 +16,16 @@ export interface AppOptions {
 }
 
 export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
-  const app = Fastify({ logger: opts.logger ?? false });
+  // Behind Coolify's Traefik: take the client IP from X-Forwarded-For.
+  const app = Fastify({ logger: opts.logger ?? false, trustProxy: true });
+  app.setErrorHandler((err: { statusCode?: number }, req, reply) => {
+    const status = err.statusCode && err.statusCode < 500 ? err.statusCode : 500;
+    if (status >= 500) {
+      req.log.error({ err }, 'request failed');
+      return reply.code(500).send({ error: 'internal' });
+    }
+    return reply.code(status).send({ error: 'invalid_request' });
+  });
   await app.register(healthRoutes, { version: opts.version, db: opts.db });
   if (opts.db) {
     await registerAuth(app, { db: opts.db, cookieSecure: opts.cookieSecure ?? false });

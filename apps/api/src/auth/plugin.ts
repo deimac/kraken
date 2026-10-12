@@ -1,4 +1,5 @@
 import cookie from '@fastify/cookie';
+import rateLimit from '@fastify/rate-limit';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -29,15 +30,26 @@ export async function registerAuth(
   { db, cookieSecure }: { db: Db; cookieSecure: boolean },
 ): Promise<void> {
   await app.register(cookie);
+  await app.register(rateLimit, { global: false, hook: 'preHandler' });
   app.decorateRequest('user', null);
   app.addHook('onRequest', async (req) => {
     req.user = null;
-    if (!req.url.startsWith('/api/')) return;
+    if (!req.url.startsWith('/api/') || req.url.startsWith('/api/health')) return;
     const token = req.cookies[SESSION_COOKIE];
     if (token) req.user = await findSessionUser(db, token);
   });
 
-  app.post('/api/auth/login', async (req, reply) => {
+  // 10 attempts per minute per client IP and e-mail: slows guessing without locking out others.
+  const loginRateLimit = {
+    max: 10,
+    timeWindow: '1 minute',
+    keyGenerator: (req: { ip: string; body?: unknown }) => {
+      const email = (req.body as { email?: unknown } | undefined)?.email;
+      return `${req.ip}|${typeof email === 'string' ? email.trim().toLowerCase() : ''}`;
+    },
+  };
+
+  app.post('/api/auth/login', { config: { rateLimit: loginRateLimit } }, async (req, reply) => {
     const body = parse(LoginBody, req.body, reply);
     if (!body) return reply;
     const [user] = await db

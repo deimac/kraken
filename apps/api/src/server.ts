@@ -20,6 +20,8 @@ const app = await buildApp({
   cookieSecure: config.cookieSecure,
 });
 
+database.pool.on('error', (err) => app.log.error({ err }, 'postgres pool error'));
+
 if (config.adminEmail && config.adminPassword) {
   const result = await ensureAdmin(database.db, { email: config.adminEmail, password: config.adminPassword });
   app.log.info({ result }, 'admin bootstrap');

@@ -11,7 +11,7 @@ describe('loadConfig', () => {
       version: 'dev',
       logLevel: 'info',
       databaseUrl: undefined,
-      cookieSecure: false,
+      cookieSecure: true,
       adminEmail: undefined,
       adminPassword: undefined,
     });
@@ -28,6 +28,11 @@ describe('loadConfig', () => {
       version: '1.2.3', logLevel: 'debug', databaseUrl: 'postgres://x',
       cookieSecure: true, adminEmail: 'a@b.com', adminPassword: 'secret-pass-123',
     });
+  });
+
+  it('only disables secure cookies when COOKIE_SECURE is exactly false', () => {
+    expect(loadConfig({ COOKIE_SECURE: 'false' }).cookieSecure).toBe(false);
+    expect(loadConfig({ COOKIE_SECURE: 'no' }).cookieSecure).toBe(true);
   });
 
   it('falls back to SOURCE_COMMIT for version', () => {
