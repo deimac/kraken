@@ -19,7 +19,7 @@ const PROTECTED: [string, string][] = [
   ['POST', `/api/campaigns/${ID}/request-changes`], ['POST', `/api/campaigns/${ID}/cancel`],
   ['GET', '/api/admin/campaigns'], ['POST', '/api/admin/campaigns'], ['POST', `/api/admin/campaigns/${ID}/media`],
   ['POST', `/api/admin/campaigns/${ID}/cancel`],
-  ['GET', `/api/media/${ID}`],
+  ['GET', `/api/media/${ID}`], ['GET', '/api/player/manifest'], ['PATCH', '/api/partner/settings'],
   ['GET', '/api/admin/midora-plans'], ['POST', '/api/admin/midora-plans'], ['PATCH', `/api/admin/midora-plans/${ID}`],
 ];
 

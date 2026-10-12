@@ -99,10 +99,10 @@ describe('media delivery', () => {
     expect(d.headers['content-range']).toBe(`bytes */${size}`);
   });
 
-  it('is visible to the same partner and its player, not to other partners', async () => {
+  it('is visible to the same partner, not to other partners; TVs only see eligible media', async () => {
     await t.app.inject({ method: 'PUT', url: '/api/partner/player-account', headers: { cookie: s.gerenteA }, payload: { password: 'senha-tv-123' } });
     const tv = await login(t.app, 'tv@parceiro-a', 'senha-tv-123');
-    expect((await req('GET', `/api/media/${mediaId}`, tv)).statusCode).toBe(200);
+    expect((await req('GET', `/api/media/${mediaId}`, tv)).statusCode).toBe(404); // not eligible (draft)
     expect((await req('GET', `/api/media/${mediaId}`, s.gerenteB)).statusCode).toBe(404);
     expect((await req('GET', `/api/media/${mediaId}`)).statusCode).toBe(401);
   });

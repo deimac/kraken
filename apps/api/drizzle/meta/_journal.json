@@ -22,6 +22,13 @@
       "when": 1791807155297,
       "tag": "0002_midora_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791809156260,
+      "tag": "0003_player_settings",
+      "breakpoints": true
     }
   ]
 }

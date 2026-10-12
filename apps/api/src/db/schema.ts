@@ -37,6 +37,8 @@ export const partners = pgTable(
     defaultImageSeconds: integer('default_image_seconds').notNull().default(10),
     showInstitutional: boolean('show_institutional').notNull().default(false),
     midoraPlanId: uuid('midora_plan_id').references(() => midoraPlans.id, { onDelete: 'restrict' }),
+    transition: text('transition', { enum: ['fade', 'slide', 'cut'] }).notNull().default('fade'),
+    transitionMs: integer('transition_ms').notNull().default(600),
     ...timestamps,
   },
   (t) => [
@@ -46,6 +48,8 @@ export const partners = pgTable(
       sql`${t.weightLow} > 0 and ${t.weightMedium} > 0 and ${t.weightHigh} > 0`,
     ),
     check('partners_image_seconds_check', sql`${t.defaultImageSeconds} between 1 and 3600`),
+    check('partners_transition_check', sql`${t.transition} in ('fade', 'slide', 'cut')`),
+    check('partners_transition_ms_check', sql`${t.transitionMs} between 0 and 3000`),
   ],
 );
 

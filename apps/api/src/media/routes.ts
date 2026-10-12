@@ -3,6 +3,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { requireRole } from '../auth/guard';
 import type { SessionUser } from '../auth/sessions';
+import { listEligible } from '../campaigns/eligibility';
 import type { Db } from '../db/client';
 import { ROLES, campaigns, media } from '../db/schema';
 import { parse } from '../http/validation';
@@ -26,6 +27,11 @@ export const mediaRoutes: FastifyPluginAsync<{ db: Db; storage: LocalStorage }> 
       .from(media)
       .innerJoin(campaigns, eq(campaigns.id, media.campaignId))
       .where(eq(media.id, params.id));
+    if (row && req.user!.role === 'player') {
+      // TVs may only download what they are allowed to play right now.
+      const eligible = await listEligible(db, req.user!.partnerId!);
+      if (!eligible.some((i) => i.media.id === row.m.id)) return reply.code(404).send({ error: 'not_found' });
+    }
     if (!row || !canRead(req.user!, row.m, row.advertiserId)) return reply.code(404).send({ error: 'not_found' });
     const m = row.m;
     const size = m.sizeBytes;

@@ -9,6 +9,10 @@ import { partners, users } from '../db/schema';
 import { parse } from '../http/validation';
 
 const PlayerAccount = z.object({ password: z.string().min(8).max(200) }).strict();
+const Settings = z
+  .object({ transition: z.enum(['fade', 'slide', 'cut']), transitionMs: z.number().int().min(0).max(3000) })
+  .partial()
+  .strict();
 
 // partnerId always comes from the session, never from the request.
 export const partnerRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db }) => {
@@ -26,6 +30,17 @@ export const partnerRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db })
       .where(eq(users.partnerId, req.user!.partnerId!))
       .orderBy(asc(users.email)),
   }));
+
+  app.patch('/api/partner/settings', async (req, reply) => {
+    const body = parse(Settings, req.body, reply);
+    if (!body) return reply;
+    const [partner] = await db
+      .update(partners)
+      .set({ ...body, updatedAt: new Date() })
+      .where(eq(partners.id, req.user!.partnerId!))
+      .returning();
+    return { partner };
+  });
 
   app.put('/api/partner/player-account', async (req, reply) => {
     const body = parse(PlayerAccount, req.body, reply);

@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, lt } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { partners, sessions, users, type Role } from '../db/schema';
 
@@ -50,4 +50,17 @@ export async function deleteSession(db: Db, token: string): Promise<void> {
 
 export async function deleteUserSessions(db: Db, userId: string): Promise<void> {
   await db.delete(sessions).where(eq(sessions.userId, userId));
+}
+
+const RENEW_BELOW_MS = 180 * DAY_MS;
+
+/** Slides a long-lived session forward when it is getting close to expiry. Returns the new expiry, if renewed. */
+export async function renewSession(db: Db, token: string): Promise<Date | null> {
+  const expiresAt = new Date(Date.now() + SESSION_TTL_MS.player);
+  const [row] = await db
+    .update(sessions)
+    .set({ expiresAt })
+    .where(and(eq(sessions.id, hashToken(token)), lt(sessions.expiresAt, new Date(Date.now() + RENEW_BELOW_MS))))
+    .returning({ id: sessions.id });
+  return row ? expiresAt : null;
 }

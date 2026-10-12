@@ -37,7 +37,7 @@ export async function listEligible(db: Db, partnerId: string, now: Date = new Da
     .from(campaigns)
     .innerJoin(media, eq(media.id, campaigns.currentMediaId))
     .where(and(owner, eq(campaigns.status, 'approved'), lte(campaigns.startsAt, now), gt(campaigns.endsAt, now)))
-    .orderBy(asc(campaigns.createdAt));
+    .orderBy(asc(campaigns.createdAt), asc(campaigns.id));
   return rows.map((r) => ({
     campaignId: r.campaignId, kind: r.kind, name: r.name, frequencyLevel: r.frequencyLevel,
     media: {
