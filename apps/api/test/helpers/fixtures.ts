@@ -10,7 +10,7 @@ export async function createPartner(db: Db, slug: string, status: 'active' | 'in
 
 export async function createUser(
   db: Db,
-  u: { email: string; password: string; role: Role; partnerId?: string },
+  u: { email: string; password: string; role: Role; partnerId?: string; advertiserId?: string },
 ) {
   const [row] = await db
     .insert(users)
@@ -19,6 +19,7 @@ export async function createUser(
       passwordHash: await hashPassword(u.password),
       role: u.role,
       partnerId: u.partnerId ?? null,
+      advertiserId: u.advertiserId ?? null,
     })
     .returning();
   return row!;

@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { advertisers } from '../src/db/schema';
 import { createTestApp, seed } from './helpers/app';
+import { createUser, login } from './helpers/fixtures';
 
 let t: Awaited<ReturnType<typeof createTestApp>>;
 let s: Awaited<ReturnType<typeof seed>>;
@@ -42,5 +44,21 @@ describe('plans', () => {
     expect((await req('PATCH', `/api/partner/plans/${id}`, s.gerenteA, { active: false })).json().plan.active).toBe(false);
     expect((await req('PATCH', `/api/partner/plans/${id}`, s.gerenteB, { active: true })).statusCode).toBe(404);
     expect((await req('POST', '/api/partner/plans', s.gerenteA, { name: 'X', frequencyLevel: 'max' })).statusCode).toBe(400);
+  });
+});
+
+describe('advertiser plans', () => {
+  it('lists only active plans of the advertiser partner', async () => {
+    await req('POST', '/api/partner/plans', s.gerenteA, { name: 'Prata', frequencyLevel: 'medium' });
+    const off = (await req('POST', '/api/partner/plans', s.gerenteA, { name: 'Desligado', frequencyLevel: 'low' })).json().plan.id;
+    await req('PATCH', `/api/partner/plans/${off}`, s.gerenteA, { active: false });
+    await req('POST', '/api/partner/plans', s.gerenteB, { name: 'Do B', frequencyLevel: 'high' });
+    const [adv] = await t.db.insert(advertisers).values({ partnerId: s.partnerA.id, name: 'Adv', source: 'manual' }).returning();
+    await createUser(t.db, { email: 'adv@a.com', password: 'senha-forte-1', role: 'advertiser', partnerId: s.partnerA.id, advertiserId: adv!.id });
+    const cookie = await login(t.app, 'adv@a.com', 'senha-forte-1');
+    const names = (await req('GET', '/api/advertiser/plans', cookie)).json().plans.map((p: { name: string }) => p.name);
+    expect(names).toContain('Prata');
+    expect(names).not.toContain('Desligado');
+    expect(names).not.toContain('Do B');
   });
 });

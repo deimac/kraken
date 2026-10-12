@@ -86,6 +86,14 @@ export const catalogRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db })
     return { plan };
   });
 
+  app.get('/api/advertiser/plans', { preHandler: requireRole('advertiser') }, async (req) => ({
+    plans: await db
+      .select({ id: plans.id, name: plans.name, description: plans.description, frequencyLevel: plans.frequencyLevel })
+      .from(plans)
+      .where(and(eq(plans.partnerId, req.user!.partnerId!), eq(plans.active, true)))
+      .orderBy(asc(plans.name)),
+  }));
+
   app.get('/api/advertiser', { preHandler: requireRole('advertiser') }, async (req) => {
     const [advertiser] = await db.select().from(advertisers).where(eq(advertisers.id, req.user!.advertiserId!));
     return { advertiser };

@@ -48,6 +48,13 @@ describe('creating campaigns', () => {
     expect(res.json().campaign).toMatchObject({ status: 'draft', kind: 'commercial', frequencyLevel: 'high', partnerId: s.partnerA.id });
   });
 
+  it('lists campaigns with the advertiser name', async () => {
+    const list = (await req('GET', '/api/campaigns', s.gerenteA)).json().campaigns as { advertiserName: string; name: string }[];
+    expect(list.find((c) => c.name === 'Verão')?.advertiserName).toBe('Manual A');
+    const id = (await req('POST', '/api/campaigns', advCookie, { planId: planA, name: 'Com nome', ...period })).json().campaign.id;
+    expect((await req('GET', `/api/campaigns/${id}`, advCookie)).json().campaign.advertiserName).toBe('Empresa anunc@x.com');
+  });
+
   it('advertiser creates for itself and cannot pick another advertiser', async () => {
     const res = await req('POST', '/api/campaigns', advCookie, { planId: planA, name: 'Minha', ...period });
     expect(res.statusCode).toBe(201);

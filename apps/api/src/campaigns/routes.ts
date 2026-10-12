@@ -69,6 +69,12 @@ export async function transition(
 
 export const withStatus = (c: Campaign) => ({ ...c, effectiveStatus: effectiveStatus(c) });
 
+const campaignWithAdvertiser = { campaign: campaigns, advertiserName: advertisers.name };
+const flatten = (r: { campaign: Campaign; advertiserName: string | null }) => ({
+  ...withStatus(r.campaign),
+  advertiserName: r.advertiserName ?? '',
+});
+
 export const campaignRoutes: FastifyPluginAsync<{ db: Db; storage?: LocalStorage; uploadLimits?: UploadLimits }> = async (
   app,
   { db, storage, uploadLimits },
@@ -86,11 +92,12 @@ export const campaignRoutes: FastifyPluginAsync<{ db: Db; storage?: LocalStorage
 
   app.get('/api/campaigns', anyOwner, async (req) => {
     const rows = await db
-      .select()
+      .select(campaignWithAdvertiser)
       .from(campaigns)
+      .leftJoin(advertisers, eq(advertisers.id, campaigns.advertiserId))
       .where(and(eq(campaigns.kind, 'commercial'), scope(req.user!)))
       .orderBy(desc(campaigns.createdAt));
-    return { campaigns: rows.map(withStatus) };
+    return { campaigns: rows.map(flatten) };
   });
 
   app.get('/api/campaigns/:id', anyOwner, async (req, reply) => {
@@ -109,7 +116,8 @@ export const campaignRoutes: FastifyPluginAsync<{ db: Db; storage?: LocalStorage
       .from(campaignReviews)
       .where(eq(campaignReviews.campaignId, c.id))
       .orderBy(asc(campaignReviews.createdAt), asc(campaignReviews.id));
-    return { campaign: withStatus(c), media: current ?? null, reviews };
+    const [adv] = await db.select({ name: advertisers.name }).from(advertisers).where(eq(advertisers.id, c.advertiserId!));
+    return { campaign: { ...withStatus(c), advertiserName: adv?.name ?? '' }, media: current ?? null, reviews };
   });
 
   app.post('/api/campaigns', anyOwner, async (req, reply) => {
