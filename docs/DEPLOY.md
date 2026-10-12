@@ -74,6 +74,8 @@ Variáveis novas no Coolify vêm marcadas como "Build Variable"; desmarque nas q
 
 Coolify → kraken → Deployments → escolher o deploy anterior → **Redeploy**; ou `git revert` na `main`.
 
+Migrações não são desfeitas automaticamente: voltar para um deploy anterior a uma migração deixa o código antigo diante do banco novo. Em especial, deploys anteriores à `0005_kraken_plans` (renomeação Midora → Kraken Ads) consultam `midora_plans`/`midora_plan_id` e quebram as telas de parceiros e planos; nesse caso, corrigir para frente em vez de reverter.
+
 ## Backups e recuperação
 
 - `kraken-db`: backup diário às 03:00 (Brasília, cron `0 6 * * *`), 7 cópias, armazenadas na VPS. Destino externo: pendente.
