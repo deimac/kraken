@@ -30,6 +30,13 @@ Merge/push na `main` dispara build e deploy automáticos. O CI (`.github/workflo
 - Postgres 18 `midora-db` (`7lymsttm2meffka7lits7sqs`) no projeto `midora`, sem acesso público, limite 512 MB.
 - Migrações (`apps/api/drizzle/`) são aplicadas automaticamente no start da aplicação.
 
+## Mídia
+
+- Volume `midora-media` montado em `/data/media` (Persistent Storage da aplicação). Contém os arquivos enviados (`<partnerId>/<mediaId>.<ext>`, `institutional/...`) e `tmp/` para uploads em andamento.
+- Formatos aceitos: JPEG, PNG, WebP; MP4 com H.264 e áudio AAC (ou sem áudio).
+- Proteção do disco (compartilhado com o Postgres): uploads são recusados (507 `storage_full`) se o espaço livre ficaria abaixo de `MIN_FREE_DISK_MB`; cada usuário pode enviar até `UPLOADS_PER_HOUR` arquivos por hora.
+- Backup do volume: pendente (definir junto com o destino externo de backups antes do piloto).
+
 ## Variáveis de ambiente
 
 | Variável | Valor | Observação |
@@ -40,6 +47,10 @@ Merge/push na `main` dispara build e deploy automáticos. O CI (`.github/workflo
 | `COOKIE_SECURE` | `false` | cookies são `Secure` por padrão; `false` só enquanto não houver HTTPS |
 | `ADMIN_EMAIL` | e-mail do admin | usado só se o admin ainda não existir |
 | `ADMIN_PASSWORD` | 12+ caracteres | cria o admin se ele não existir; nunca altera a senha de um admin existente; recomendado remover depois (fica em texto puro no Coolify); com `$`, marcar "Is Literal?" |
+| `MEDIA_DIR` | `/data/media` | definido na imagem; deve coincidir com o volume |
+| `MAX_IMAGE_MB` / `MAX_VIDEO_MB` | 10 / 200 | opcionais |
+| `MIN_FREE_DISK_MB` | 2048 | opcional; reserva de disco livre |
+| `UPLOADS_PER_HOUR` | 30 | opcional; por usuário |
 | `LOG_LEVEL` | `info` | opcional |
 | `APP_VERSION` | — | opcional; senão `SOURCE_COMMIT` (injetado pelo Coolify) ou `dev` |
 
