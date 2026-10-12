@@ -1,10 +1,12 @@
 import multipart from '@fastify/multipart';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import { registerAuth } from './auth/plugin';
+import { adminCampaignRoutes } from './campaigns/admin-routes';
 import { campaignRoutes } from './campaigns/routes';
 import { catalogRoutes } from './catalog/routes';
 import type { Db } from './db/client';
 import { healthRoutes } from './health';
+import { mediaRoutes } from './media/routes';
 import { registerCsrfGuard } from './http/csrf';
 import type { UploadLimits } from './media/upload';
 import { adminPartnerRoutes } from './partners/admin-routes';
@@ -45,6 +47,8 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     await app.register(publicRoutes, { db: opts.db, cookieSecure: opts.cookieSecure ?? false });
     await app.register(multipart, { limits: { fileSize: opts.uploadLimits?.maxVideoBytes, files: 1, fields: 10 } });
     await app.register(campaignRoutes, { db: opts.db, storage: opts.storage, uploadLimits: opts.uploadLimits });
+    await app.register(adminCampaignRoutes, { db: opts.db, storage: opts.storage, uploadLimits: opts.uploadLimits });
+    if (opts.storage) await app.register(mediaRoutes, { db: opts.db, storage: opts.storage });
   }
   await registerStatic(app, { webDir: opts.webDir, playerDir: opts.playerDir });
   return app;
