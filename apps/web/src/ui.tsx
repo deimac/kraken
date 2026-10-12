@@ -1,7 +1,7 @@
 import {
-  IconBuildingStore, IconChartBar, IconDeviceTv, IconLogout, IconReceipt, IconSpeakerphone, IconTags, IconUsersGroup,
+  IconBuildingStore, IconChartBar, IconDeviceTv, IconLogout, IconReceipt, IconSearch, IconSpeakerphone, IconTags, IconUsersGroup,
 } from '@tabler/icons-react';
-import type { ReactNode } from 'react';
+import { useEffect, useId, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
 import { useAuth } from './auth';
 import { STATUS_LABEL, statusTone } from './format';
@@ -92,6 +92,78 @@ export function PageHeader({ title, action }: { title: string; action?: ReactNod
     <div className="page-header">
       <h1>{title}</h1>
       {action}
+    </div>
+  );
+}
+
+export function StatCard({ icon, label, value, hint }: { icon?: ReactNode; label: string; value: ReactNode; hint?: string }) {
+  return (
+    <div className="stat">
+      {icon && <div className="stat-icon" aria-hidden="true">{icon}</div>}
+      <div>
+        <span className="stat-label">{label}</span>
+        <strong className="stat-value">{value}</strong>
+        {hint && <span className="stat-hint">{hint}</span>}
+      </div>
+    </div>
+  );
+}
+
+export function SearchInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <label className="search">
+      <IconSearch size={16} aria-hidden="true" />
+      <input type="search" aria-label="Buscar" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+    </label>
+  );
+}
+
+export function EmptyState({ icon, title, children }: { icon?: ReactNode; title: string; children?: ReactNode }) {
+  return (
+    <div className="empty">
+      {icon && <div className="empty-icon" aria-hidden="true">{icon}</div>}
+      <strong>{title}</strong>
+      {children && <div className="muted">{children}</div>}
+    </div>
+  );
+}
+
+export function IconButton({ icon, label, className = 'btn', ...rest }: { icon: ReactNode; label: string } & ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button type="button" className={className} {...rest}>
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+export function ConfirmDialog(props: {
+  open: boolean; title: string; children?: ReactNode; confirmLabel: string; danger?: boolean; busy?: boolean;
+  onConfirm: () => void; onCancel: () => void;
+}) {
+  const { open, title, children, confirmLabel, danger, busy, onConfirm, onCancel } = props;
+  const titleId = useId();
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    cancelRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel();
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onCancel]);
+  if (!open) return null;
+  return (
+    <div className="dialog-backdrop">
+      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+        <h2 id={titleId}>{title}</h2>
+        {children && <div className="dialog-body">{children}</div>}
+        <div className="dialog-actions">
+          <button ref={cancelRef} type="button" className="btn" onClick={onCancel}>Cancelar</button>
+          <button type="button" className={danger ? 'btn btn-danger-solid' : 'btn btn-primary'} disabled={busy} onClick={onConfirm}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -55,3 +55,28 @@ export function parseMoney(text: string): number | null | undefined {
   const [int = '0', dec = ''] = t.replace(/\./g, '').split(',');
   return Number(int) * 100 + Number(dec.padEnd(2, '0'));
 }
+
+export const digits = (v: string): string => v.replace(/\D/g, '');
+
+/** Fills a 0-placeholder pattern with the digits of `v`, stopping when they run out. */
+function applyMask(v: string, pattern: string): string {
+  const d = digits(v);
+  let out = '';
+  let i = 0;
+  for (const ch of pattern) {
+    if (i >= d.length) break;
+    out += ch === '0' ? d[i++] : ch;
+  }
+  return out;
+}
+
+export const maskDocument = (type: 'pf' | 'pj', v: string): string =>
+  applyMask(v, type === 'pf' ? '000.000.000-00' : '00.000.000/0000-00');
+export const maskZip = (v: string): string => applyMask(v, '00000-000');
+export const maskPhone = (v: string): string => applyMask(v, digits(v).length > 10 ? '(00) 00000-0000' : '(00) 0000-0000');
+
+/** Stored digits-only CPF/CNPJ → display form. */
+export function formatDocument(d: string | null): string {
+  if (!d) return '';
+  return maskDocument(d.length === 11 ? 'pf' : 'pj', d);
+}
