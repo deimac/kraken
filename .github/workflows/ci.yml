@@ -26,14 +26,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build image
-        run: docker build -t midora:ci .
+        run: docker build -t kraken:ci .
       - name: Smoke test
         run: |
-          docker network create midora-ci
-          docker run -d --name db --network midora-ci -e POSTGRES_PASSWORD=ci -e POSTGRES_DB=midora postgres:18-alpine
+          docker network create kraken-ci
+          docker run -d --name db --network kraken-ci -e POSTGRES_PASSWORD=ci -e POSTGRES_DB=kraken postgres:18-alpine
           for i in $(seq 1 30); do docker exec db pg_isready -U postgres && break; sleep 1; done
-          docker run -d --name midora --network midora-ci -p 3000:3000 \
-            -e DATABASE_URL=postgres://postgres:ci@db:5432/midora midora:ci
+          docker run -d --name kraken --network kraken-ci -p 3000:3000 \
+            -e DATABASE_URL=postgres://postgres:ci@db:5432/kraken kraken:ci
           for i in $(seq 1 30); do
             curl -sf http://127.0.0.1:3000/api/health && break
             sleep 1
@@ -42,4 +42,4 @@ jobs:
           curl -sf http://127.0.0.1:3000/player/ | grep 'Kraken Ads Player'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/nao-existe)" = 404
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/auth/me)" = 401
-          docker logs midora | grep -q 'Server listening'
+          docker logs kraken | grep -q 'Server listening'

@@ -1,6 +1,6 @@
-# Prompt inicial para Claude Code — MIDORA
+# Prompt inicial para Claude Code — Kraken Ads
 
-Leia integralmente `ESPECIFICACAO_MVP_MIDORA.md`.
+Leia integralmente `ESPECIFICACAO_MVP_KRAKEN.md`.
 
 **Não escreva código nesta primeira etapa.** Faça apenas uma auditoria.
 

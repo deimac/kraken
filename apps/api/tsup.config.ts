@@ -5,6 +5,6 @@ export default defineConfig({
   format: ['esm'],
   platform: 'node',
   target: 'node24',
-  noExternal: ['@midora/shared'],
+  noExternal: ['@kraken/shared'],
   clean: true,
 });

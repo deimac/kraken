@@ -20,7 +20,7 @@ const signup = async (email: string) => {
   const res = await req('POST', '/api/public/partners/parceiro-a/advertisers', undefined, {
     companyName: `Empresa ${email}`, contactName: 'C', email, password: 'senha-anunc-1',
   });
-  return `midora_session=${res.cookies.find((c) => c.name === 'midora_session')!.value}`;
+  return `kraken_session=${res.cookies.find((c) => c.name === 'kraken_session')!.value}`;
 };
 
 const period = { startsAt: '2026-01-01T00:00:00Z', endsAt: '2030-01-01T00:00:00Z' };

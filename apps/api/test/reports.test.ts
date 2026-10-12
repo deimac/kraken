@@ -70,6 +70,7 @@ describe('plays report', () => {
   it('scopes partners to their screens (including institutional)', async () => {
     expect(names((await req(`/api/reports/plays?${RANGE}`, s.gerenteA)).json())).toEqual(['Campanha A', 'Campanha A2', 'Institucional']);
     expect(names((await req(`/api/reports/plays?${RANGE}`, s.gerenteB)).json())).toEqual(['Campanha B']);
+    expect((await req(`/api/reports/plays.csv?${RANGE}`, s.gerenteA)).body).toContain('Institucional;Kraken Ads;institucional;2026-10-11;5');
   });
 
   it('scopes advertisers to their own campaigns', async () => {

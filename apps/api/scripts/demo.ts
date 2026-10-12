@@ -38,17 +38,17 @@ function solidPng(width: number, height: number, [r, g, b]: [number, number, num
     chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0)),
   ]);
 }
-const DEMO_PASSWORD = 'demo-midora-123';
+const DEMO_PASSWORD = 'demo-kraken-123';
 
 const client = new PGlite();
 const pg = drizzle(client, { schema });
 await migrate(pg, { migrationsFolder: here('../drizzle') });
 const db = pg as unknown as Db;
 
-const [midoraPlan] = await db.insert(schema.midoraPlans).values({ name: 'Essencial', priceCents: 9900 }).returning();
+const [krakenPlan] = await db.insert(schema.krakenPlans).values({ name: 'Essencial', priceCents: 9900 }).returning();
 const [partner] = await db
   .insert(schema.partners)
-  .values({ name: 'Academia Demo', slug: 'academia-demo', showInstitutional: true, midoraPlanId: midoraPlan!.id })
+  .values({ name: 'Academia Demo', slug: 'academia-demo', showInstitutional: true, krakenPlanId: krakenPlan!.id })
   .returning();
 const [advertiser] = await db
   .insert(schema.advertisers)
@@ -69,7 +69,7 @@ const [bronze, ouro] = await db
   ])
   .returning();
 
-const storage = new LocalStorage(await mkdtemp(join(tmpdir(), 'midora-demo-')));
+const storage = new LocalStorage(await mkdtemp(join(tmpdir(), 'kraken-demo-')));
 await storage.init();
 
 // Two approved campaigns playing now, with different colors so transitions are visible.
@@ -107,4 +107,4 @@ const app = await buildApp({
   playerDir: here('../../player/dist'),
 });
 await app.listen({ port: 3100, host: '127.0.0.1' });
-console.log('Midora demo em http://localhost:3100 — usuários *@demo.test, senha em apps/api/scripts/demo.ts');
+console.log('Kraken Ads demo em http://localhost:3100 — usuários *@demo.test, senha em apps/api/scripts/demo.ts');

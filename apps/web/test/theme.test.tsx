@@ -11,7 +11,7 @@ describe('theme', () => {
   it('uses the saved choice, else the system preference', () => {
     stubSystem(true);
     expect(initialTheme()).toBe('dark');
-    localStorage.setItem('midora-theme', 'light');
+    localStorage.setItem('kraken-theme', 'light');
     expect(initialTheme()).toBe('light');
   });
 
@@ -22,7 +22,7 @@ describe('theme', () => {
     expect(document.documentElement.dataset.theme).toBe('light');
     await userEvent.click(btn);
     expect(document.documentElement.dataset.theme).toBe('dark');
-    expect(localStorage.getItem('midora-theme')).toBe('dark');
+    expect(localStorage.getItem('kraken-theme')).toBe('dark');
     expect(screen.getByRole('button', { name: 'Ativar tema claro' })).toBeTruthy();
   });
 
@@ -30,6 +30,6 @@ describe('theme', () => {
     const { readFile } = await import('node:fs/promises');
     const { join } = await import('node:path');
     const html = await readFile(join(process.cwd(), 'index.html'), 'utf8');
-    expect(html).toMatch(/<script>[^<]*midora-theme[^<]*dataset\.theme/);
+    expect(html).toMatch(/<script>[^<]*kraken-theme[^<]*dataset\.theme/);
   });
 });

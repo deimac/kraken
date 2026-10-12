@@ -37,8 +37,8 @@ describe('advertiser self-signup', () => {
     const res = await t.app.inject({ method: 'POST', url: '/api/public/partners/parceiro-a/advertisers', payload: body });
     expect(res.statusCode).toBe(201);
     expect(res.json().user).toMatchObject({ email: 'bia@lojafit.com', role: 'advertiser', partnerId: s.partnerA.id });
-    const cookie = res.cookies.find((c) => c.name === 'midora_session')!;
-    const me = await t.app.inject({ method: 'GET', url: '/api/advertiser', headers: { cookie: `midora_session=${cookie.value}` } });
+    const cookie = res.cookies.find((c) => c.name === 'kraken_session')!;
+    const me = await t.app.inject({ method: 'GET', url: '/api/advertiser', headers: { cookie: `kraken_session=${cookie.value}` } });
     expect(me.json().advertiser).toMatchObject({ name: 'Loja Fit', source: 'self_signup', email: 'bia@lojafit.com' });
     const list = await t.app.inject({ method: 'GET', url: '/api/partner/advertisers', headers: { cookie: s.gerenteA } });
     expect(list.json().advertisers.map((a: { name: string }) => a.name)).toContain('Loja Fit');
@@ -53,7 +53,7 @@ describe('advertiser self-signup', () => {
 
   it('advertiser cannot use partner routes', async () => {
     const res = await t.app.inject({ method: 'POST', url: '/api/public/partners/parceiro-a/advertisers', payload: { ...body, email: 'c@lojafit.com' } });
-    const cookie = `midora_session=${res.cookies.find((c) => c.name === 'midora_session')!.value}`;
+    const cookie = `kraken_session=${res.cookies.find((c) => c.name === 'kraken_session')!.value}`;
     expect((await t.app.inject({ method: 'GET', url: '/api/partner/advertisers', headers: { cookie } })).statusCode).toBe(403);
   });
 });

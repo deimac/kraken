@@ -46,7 +46,7 @@ export const reportRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db }) 
     for (const c of r.campaigns) {
       const kind = c.kind === 'institutional' ? 'institucional' : 'comercial';
       for (const d of c.days) {
-        lines.push([c.name, c.advertiserName ?? 'Midora', kind, d.day, String(d.count)].map(csvCell).join(';'));
+        lines.push([c.name, c.advertiserName ?? 'Kraken Ads', kind, d.day, String(d.count)].map(csvCell).join(';'));
       }
     }
     reply

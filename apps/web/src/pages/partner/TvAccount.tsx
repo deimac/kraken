@@ -61,7 +61,7 @@ export function TvAccount() {
       <PageHeader title="Conta da TV" />
       {msg && <Notice kind={msg.kind}>{msg.text}</Notice>}
       <div className="card">
-        <p>Na TV, abra o navegador no endereço do Midora seguido de <strong>/player</strong> e entre com:</p>
+        <p>Na TV, abra o navegador no endereço do Kraken Ads seguido de <strong>/player</strong> e entre com:</p>
         <p>Usuário: <strong>{login ?? '…'}</strong></p>
         <p className="muted">Trocar a senha desconecta todas as TVs deste estabelecimento.</p>
         <form className="form" onSubmit={save}>

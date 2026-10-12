@@ -67,7 +67,7 @@ describe('play queue', () => {
 
   it('ignores malformed entries left in storage', () => {
     const storage = memoryStorage();
-    storage.setItem('midora-plays', JSON.stringify([ev(1), { id: 2 }, null, 'x']));
+    storage.setItem('kraken-plays', JSON.stringify([ev(1), { id: 2 }, null, 'x']));
     expect(createPlayQueue({ send: vi.fn(), storage }).size()).toBe(1);
   });
 

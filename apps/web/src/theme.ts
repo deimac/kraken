@@ -1,5 +1,5 @@
 export type Theme = 'light' | 'dark';
-const KEY = 'midora-theme';
+const KEY = 'kraken-theme';
 
 export function initialTheme(): Theme {
   try {

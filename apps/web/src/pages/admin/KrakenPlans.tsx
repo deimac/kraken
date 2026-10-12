@@ -2,11 +2,11 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../api';
 import { formatMoney, parseMoney } from '../../format';
 import { errorMessage } from '../../messages';
-import type { MidoraPlan } from '../../types';
+import type { KrakenPlan } from '../../types';
 import { Field, Notice, PageHeader } from '../../ui';
 
-export function MidoraPlans() {
-  const [plans, setPlans] = useState<MidoraPlan[]>([]);
+export function KrakenPlans() {
+  const [plans, setPlans] = useState<KrakenPlan[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -14,12 +14,12 @@ export function MidoraPlans() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api<{ plans: MidoraPlan[] }>('/api/admin/midora-plans').then((r) => setPlans(r.plans)).catch((e) => setError(errorMessage(e)));
+    api<{ plans: KrakenPlan[] }>('/api/admin/kraken-plans').then((r) => setPlans(r.plans)).catch((e) => setError(errorMessage(e)));
   }, []);
 
-  async function toggle(p: MidoraPlan) {
+  async function toggle(p: KrakenPlan) {
     try {
-      const r = await api<{ plan: MidoraPlan }>(`/api/admin/midora-plans/${p.id}`, { method: 'PATCH', body: { active: !p.active } });
+      const r = await api<{ plan: KrakenPlan }>(`/api/admin/kraken-plans/${p.id}`, { method: 'PATCH', body: { active: !p.active } });
       setPlans((l) => l.map((x) => (x.id === p.id ? r.plan : x)));
     } catch (err) {
       setError(errorMessage(err));
@@ -33,7 +33,7 @@ export function MidoraPlans() {
     setBusy(true);
     setError(null);
     try {
-      const r = await api<{ plan: MidoraPlan }>('/api/admin/midora-plans', {
+      const r = await api<{ plan: KrakenPlan }>('/api/admin/kraken-plans', {
         method: 'POST',
         body: { name, ...(description.trim() ? { description } : {}), ...(priceCents !== null ? { priceCents } : {}) },
       });
@@ -50,9 +50,9 @@ export function MidoraPlans() {
 
   return (
     <>
-      <PageHeader title="Planos Midora" />
+      <PageHeader title="Planos Kraken" />
       <p className="muted" style={{ marginTop: -12 }}>
-        Planos que o Midora oferece aos parceiros. Ainda sem cobrança: servem de registro do que cada parceiro contratou.
+        Planos que o Kraken Ads oferece aos parceiros. Ainda sem cobrança: servem de registro do que cada parceiro contratou.
       </p>
       {error && <Notice kind="error">{error}</Notice>}
       <div className="list" style={{ marginBottom: 16 }}>
@@ -68,10 +68,10 @@ export function MidoraPlans() {
             </button>
           </div>
         ))}
-        {plans.length === 0 && <div className="row muted">Nenhum Plano Midora cadastrado.</div>}
+        {plans.length === 0 && <div className="row muted">Nenhum Plano Kraken cadastrado.</div>}
       </div>
       <div className="card">
-        <h2>Novo Plano Midora</h2>
+        <h2>Novo Plano Kraken</h2>
         <form className="form" onSubmit={create}>
           <Field label="Nome do plano"><input value={name} onChange={(e) => setName(e.target.value)} required /></Field>
           <Field label="Valor mensal de referência (R$)">

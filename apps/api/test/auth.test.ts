@@ -17,7 +17,7 @@ beforeAll(async () => {
   const p = await createPartner(db, 'ironberg');
   const u = await createUser(db, { email: 'gerente@ironberg.com', password: 'senha-forte-1', role: 'partner_user', partnerId: p.id });
   partnerUserId = u.id;
-  await createUser(db, { email: 'admin@midora.com', password: 'senha-admin-1', role: 'admin' });
+  await createUser(db, { email: 'admin@kraken.com', password: 'senha-admin-1', role: 'admin' });
   app = await buildApp({ version: 't', db });
 });
 afterAll(async () => {
@@ -36,7 +36,7 @@ describe('login', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().user).toMatchObject({ email: 'gerente@ironberg.com', role: 'partner_user' });
     expect(res.json().user.passwordHash).toBeUndefined();
-    const c = res.cookies.find((x) => x.name === 'midora_session');
+    const c = res.cookies.find((x) => x.name === 'kraken_session');
     expect(c?.httpOnly).toBe(true);
     expect(c?.sameSite).toBe('Lax');
     expect(c?.path).toBe('/');
@@ -64,26 +64,26 @@ describe('login', () => {
 
 describe('me and logout', () => {
   it('returns the current user and 401 without a session', async () => {
-    const cookie = await login(app, 'admin@midora.com', 'senha-admin-1');
+    const cookie = await login(app, 'admin@kraken.com', 'senha-admin-1');
     const res = await getMe(cookie);
     expect(res.statusCode).toBe(200);
-    expect(res.json().user).toMatchObject({ email: 'admin@midora.com', role: 'admin', partnerId: null });
+    expect(res.json().user).toMatchObject({ email: 'admin@kraken.com', role: 'admin', partnerId: null });
     expect((await getMe()).json()).toEqual({ error: 'unauthenticated' });
     expect((await getMe()).statusCode).toBe(401);
   });
 
   it('returns 401 (not 500) for forged and expired cookies', async () => {
-    expect((await getMe('midora_session=forjado')).statusCode).toBe(401);
+    expect((await getMe('kraken_session=forjado')).statusCode).toBe(401);
     const cookie = await login(app, 'gerente@ironberg.com', 'senha-forte-1');
     await db.update(sessions).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(sessions.userId, partnerUserId));
     expect((await getMe(cookie)).statusCode).toBe(401);
   });
 
   it('logout invalidates the session and clears the cookie', async () => {
-    const cookie = await login(app, 'admin@midora.com', 'senha-admin-1');
+    const cookie = await login(app, 'admin@kraken.com', 'senha-admin-1');
     const res = await post('/api/auth/logout', undefined, cookie);
     expect(res.statusCode).toBe(204);
-    expect(res.cookies.find((x) => x.name === 'midora_session')?.value).toBe('');
+    expect(res.cookies.find((x) => x.name === 'kraken_session')?.value).toBe('');
     expect((await getMe(cookie)).statusCode).toBe(401);
   });
 });

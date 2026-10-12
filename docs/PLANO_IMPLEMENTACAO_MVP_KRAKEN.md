@@ -1,4 +1,4 @@
-# MIDORA — Plano de implementação do MVP
+# Kraken Ads — Plano de implementação do MVP
 
 Este plano é preliminar e deve ser ajustado após a auditoria do repositório. Não iniciar implementação sem autorização.
 

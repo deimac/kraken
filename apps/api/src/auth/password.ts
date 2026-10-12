@@ -15,7 +15,7 @@ export async function verifyPassword(passwordHash: string, password: string): Pr
 // Spends the same time as a real verification so unknown e-mails are not detectable by timing.
 let dummyHash: Promise<string> | undefined;
 export async function dummyVerify(password: string): Promise<false> {
-  dummyHash ??= hash('midora-dummy-password');
+  dummyHash ??= hash('kraken-dummy-password');
   await verifyPassword(await dummyHash, password);
   return false;
 }

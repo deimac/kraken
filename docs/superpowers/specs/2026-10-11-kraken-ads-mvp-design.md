@@ -1,8 +1,10 @@
-# MIDORA — Design do MVP
+# Kraken Ads — Design do MVP
+
+> Renomeado de Midora para Kraken Ads em 2026-10-12 (plano `docs/superpowers/plans/2026-10-12-renomeacao-kraken-ads.md`).
 
 **Data:** 2026-10-11
 **Status:** aprovado em conversa; aguardando revisão do documento.
-**Base:** `docs/ESPECIFICACAO_MVP_MIDORA.md` (v0.1). Em caso de divergência, a especificação prevalece sobre o prompt inicial (decisão 2026-10-11).
+**Base:** `docs/ESPECIFICACAO_MVP_KRAKEN.md` (v0.1). Em caso de divergência, a especificação prevalece sobre o prompt inicial (decisão 2026-10-11).
 
 ## 1. Objetivo e critério de sucesso
 
@@ -16,10 +18,10 @@ Plataforma web para exibir anúncios (imagens e vídeos) em TVs de estabelecimen
 | D2 | Mídia em volume persistente da VPS, acessada por uma interface de storage substituível por S3. |
 | D3 | Player autentica com conta `player` dedicada por parceiro, somente leitura, sessão longa; trocar a senha desconecta as TVs. |
 | D4 | Domínio definido depois; Etapa 0 usa domínio provisório `*.sslip.io` do Coolify. |
-| D5 | Anúncios institucionais Midora exibidos apenas em parceiros com `show_institutional = true` (definido pelo admin). |
-| D6 | Repositório GitHub `deimac/midora`, branch `main`. |
+| D5 | Anúncios institucionais Kraken Ads exibidos apenas em parceiros com `show_institutional = true` (definido pelo admin). |
+| D6 | Repositório GitHub `deimac/kraken`, branch `main`. |
 | D7 | Três áreas: super admin (controle do sistema), parceiro (configura e aprova anúncios) e anunciante. |
-| D8 | Dois tipos de plano: **Planos Midora** (o Midora vende ao parceiro) e **Planos de anúncio** (o parceiro vende ao anunciante). No MVP, Planos Midora são só cadastro (nome, descrição, valor de referência) e vínculo com o parceiro — sem cobrança e sem limites aplicados. |
+| D8 | Dois tipos de plano: **Planos Kraken** (o Kraken Ads vende ao parceiro) e **Planos de anúncio** (o parceiro vende ao anunciante). No MVP, Planos Kraken são só cadastro (nome, descrição, valor de referência) e vínculo com o parceiro — sem cobrança e sem limites aplicados. |
 | D9 | Página pública `/p/<slug>` simples (planos de anúncio + autocadastro) no MVP; a landing page completa do parceiro substitui essa página depois, no mesmo endereço. |
 | D11 | Relatórios por dia no horário de Brasília (`America/Sao_Paulo`), para todos os parceiros. |
 | D10 | Painel com tema claro (grafite + esmeralda) e noturno (noite + esmeralda), botão lua/sol; sem azul. |
@@ -29,7 +31,7 @@ Plataforma web para exibir anúncios (imagens e vídeos) em TVs de estabelecimen
 Monorepo (pnpm workspaces), monólito modular, um contêiner:
 
 ```
-midora/
+kraken/
   apps/api/        Fastify + TS + Drizzle; módulos auth, partners, advertisers,
                    campaigns, media, player, plays (rotas/serviço/queries por módulo)
   apps/web/        React + Vite: admin, parceiro, anunciante, página pública /p/<slug>
@@ -99,7 +101,7 @@ Institucionais são criadas pelo admin já como `approved`, sem revisão de parc
 
 **Sincronização** — a cada 30 s e ao reconectar, envia lotes de até 200 eventos a `POST /api/plays`. O servidor valida que cada campanha pertence ao parceiro da sessão (ou é institucional permitida), insere com `ON CONFLICT (id) DO NOTHING` e responde com os IDs aceitos (novos ou já existentes). O player remove do IndexedDB apenas os confirmados.
 
-**Estados especiais** — sem campanhas elegíveis: tela de espera com marca Midora, nova tentativa periódica, nunca tela preta. Resposta 401: tela de login, eventos pendentes preservados. Mídia corrompida: removida do cache e baixada novamente.
+**Estados especiais** — sem campanhas elegíveis: tela de espera com marca Kraken Ads, nova tentativa periódica, nunca tela preta. Resposta 401: tela de login, eventos pendentes preservados. Mídia corrompida: removida do cache e baixada novamente.
 
 **Áudio e transições** — inicia mudo (política de autoplay) com opção de ativar som na primeira interação; validar na Fire TV. Transição apenas fade simples; corte seco se o fade não for confiável.
 
@@ -116,7 +118,7 @@ Institucionais são criadas pelo admin já como `approved`, sem revisão de parc
 
 ## 10. Implantação (Coolify)
 
-- Projeto Coolify **Midora** dedicado, ambiente `production`; nenhum recurso compartilhado com sistemas existentes.
+- Projeto Coolify **Kraken Ads** dedicado, ambiente `production`; nenhum recurso compartilhado com sistemas existentes.
 - Application: Dockerfile, origem `main` do GitHub, limite 1 GB RAM, volume `/data/media`, healthcheck `/api/health`, domínio `*.sslip.io` provisório.
 - Postgres 16 dedicado, sem porta pública, limite 512 MB.
 - Migrações Drizzle executadas no start; somente migrações aditivas automáticas; destrutivas exigem autorização.

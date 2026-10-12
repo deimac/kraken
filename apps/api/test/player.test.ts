@@ -69,7 +69,7 @@ describe('player manifest', () => {
     const soon = new Date(Date.now() + 10 * 86_400_000);
     await t.db.update(sessions).set({ expiresAt: soon });
     const res = await req('GET', '/api/player/manifest', tv);
-    expect(res.cookies.find((c) => c.name === 'midora_tv')).toBeTruthy();
+    expect(res.cookies.find((c) => c.name === 'kraken_tv')).toBeTruthy();
     const rows = await t.db.select({ e: sessions.expiresAt }).from(sessions);
     expect(rows.some((r) => r.e.getTime() > Date.now() + 300 * 86_400_000)).toBe(true);
   });

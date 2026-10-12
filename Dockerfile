@@ -4,7 +4,7 @@ RUN npm install -g pnpm@10.27.0
 COPY . .
 RUN pnpm install --frozen-lockfile \
  && pnpm build \
- && pnpm --filter @midora/api deploy --prod --legacy /out
+ && pnpm --filter @kraken/api deploy --prod --legacy /out
 
 FROM node:24-alpine
 ENV NODE_ENV=production \
