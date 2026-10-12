@@ -13,7 +13,7 @@ const create = (headers: Record<string, string>) =>
   t.app.inject({
     method: 'POST',
     url: '/api/partner/plans',
-    headers: { cookie: s.gerenteA, host: 'midora.test', ...headers },
+    headers: { cookie: s.gerenteA, host: 'kraken.test', ...headers },
     payload: { name: 'P', frequencyLevel: 'low' },
   });
 
@@ -23,7 +23,7 @@ it('blocks cross-site requests', async () => {
 });
 
 it('allows same-origin and non-browser requests', async () => {
-  expect((await create({ 'sec-fetch-site': 'same-origin', origin: 'http://midora.test' })).statusCode).toBe(201);
+  expect((await create({ 'sec-fetch-site': 'same-origin', origin: 'http://kraken.test' })).statusCode).toBe(201);
   expect((await create({})).statusCode).toBe(201);
 });
 

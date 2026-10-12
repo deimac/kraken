@@ -1,4 +1,4 @@
-# MIDORA — Especificação Técnica do MVP
+# Kraken Ads — Especificação Técnica do MVP
 
 **Versão:** 0.1  
 **Data:** 10/10/2026  
@@ -12,7 +12,7 @@ Construir uma plataforma web independente para distribuir anúncios em TVs de es
 
 ### 2.1 Player publicitário — prioridade máxima
 
-1. O estabelecimento abre o endereço do MIDORA no navegador da TV.
+1. O estabelecimento abre o endereço do Kraken Ads no navegador da TV.
 2. Autentica-se.
 3. O sistema identifica o estabelecimento associado à conta.
 4. O player carrega automaticamente as campanhas elegíveis daquele parceiro.
@@ -24,7 +24,7 @@ Não criar painel de gerenciamento de TVs, ativação manual de telas, grupos de
 
 ### 2.2 Player YouTube — prova de conceito separada
 
-Investigar isoladamente a compatibilidade do YouTube com o navegador de Fire TV utilizado no piloto. Esse experimento não pode atrasar nem ser dependência do player publicitário. Não prometer reprodução sem anúncios do YouTube nem implementar mecanismos para bloquear, ocultar ou substituir seus anúncios. A alternância entre YouTube e anúncios MIDORA fica para uma fase futura.
+Investigar isoladamente a compatibilidade do YouTube com o navegador de Fire TV utilizado no piloto. Esse experimento não pode atrasar nem ser dependência do player publicitário. Não prometer reprodução sem anúncios do YouTube nem implementar mecanismos para bloquear, ocultar ou substituir seus anúncios. A alternância entre YouTube e anúncios Kraken Ads fica para uma fase futura.
 
 ## 3. Fora do escopo
 
@@ -44,7 +44,7 @@ Investigar isoladamente a compatibilidade do YouTube com o navegador de Fire TV 
 
 
 
-### Administrador MIDORA
+### Administrador Kraken Ads
 
 Administra a plataforma e os parceiros. Pode gerir anúncios institucionais próprios em fluxo separado. Não aprova campanhas comerciais de terceiros.
 
@@ -111,7 +111,7 @@ Uma campanha comercial pode entrar na rotação quando:
 - Possui mídia válida e disponível localmente ou passível de download.
 - Cumpre as condições simples definidas para o MVP.
 
-Nunca mostrar campanha comercial de outro parceiro. Anúncios institucionais MIDORA devem ser identificados separadamente e seguir o acordo aplicável ao estabelecimento, sem aprovação individual pelo parceiro.
+Nunca mostrar campanha comercial de outro parceiro. Anúncios institucionais Kraken Ads devem ser identificados separadamente e seguir o acordo aplicável ao estabelecimento, sem aprovação individual pelo parceiro.
 
 Não adicionar regras avançadas de segmentação ou janelas horárias sem decisão explícita.
 

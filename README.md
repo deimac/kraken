@@ -1,4 +1,4 @@
-# Midora
+# Kraken Ads
 
 **SMART MEDIA NETWORK** — Sua mídia. Múltiplas possibilidades.
 
@@ -21,10 +21,10 @@ pnpm install
 pnpm test
 ```
 
-Para rodar a API localmente é preciso um Postgres (ex.: `brew services start postgresql@18` e `createdb midora`):
+Para rodar a API localmente é preciso um Postgres (ex.: `brew services start postgresql@18` e `createdb kraken`):
 
 ```bash
-DATABASE_URL=postgres://localhost/midora ADMIN_EMAIL=admin@local.test ADMIN_PASSWORD=<12+ caracteres> pnpm dev:api
+DATABASE_URL=postgres://localhost/kraken ADMIN_EMAIL=admin@local.test ADMIN_PASSWORD=<12+ caracteres> pnpm dev:api
 pnpm dev:web      # painel, com proxy de /api para a API
 pnpm dev:player   # player, com proxy de /api para a API
 ```

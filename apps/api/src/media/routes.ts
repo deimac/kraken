@@ -14,7 +14,7 @@ const IdParams = z.object({ id: z.uuid() });
 function canRead(user: SessionUser, m: { partnerId: string | null }, advertiserId: string | null): boolean {
   if (user.role === 'admin') return true;
   if (user.role === 'advertiser') return advertiserId !== null && advertiserId === user.advertiserId;
-  // partner users and players: own partner's media, plus Midora institutional media
+  // partner users and players: own partner's media, plus Kraken Ads institutional media
   return m.partnerId === null || m.partnerId === user.partnerId;
 }
 

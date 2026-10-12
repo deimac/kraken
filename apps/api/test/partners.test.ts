@@ -18,11 +18,11 @@ beforeAll(async () => {
   ({ db, close } = await createTestDb());
   partnerA = await createPartner(db, 'parceiro-a');
   partnerB = await createPartner(db, 'parceiro-b');
-  await createUser(db, { email: 'admin@midora.com', password: 'senha-admin-1', role: 'admin' });
+  await createUser(db, { email: 'admin@kraken.com', password: 'senha-admin-1', role: 'admin' });
   await createUser(db, { email: 'g@a.com', password: 'senha-forte-1', role: 'partner_user', partnerId: partnerA.id });
   await createUser(db, { email: 'g@b.com', password: 'senha-forte-1', role: 'partner_user', partnerId: partnerB.id });
   app = await buildApp({ version: 't', db });
-  admin = await login(app, 'admin@midora.com', 'senha-admin-1');
+  admin = await login(app, 'admin@kraken.com', 'senha-admin-1');
   gerenteA = await login(app, 'g@a.com', 'senha-forte-1');
   gerenteB = await login(app, 'g@b.com', 'senha-forte-1');
 });

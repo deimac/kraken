@@ -73,7 +73,7 @@ export function Reports() {
             <div className="row">
               <div className="row-main">
                 <div>{r.name}</div>
-                <div className="row-sub">{r.kind === 'institutional' ? 'Midora · institucional' : r.advertiserName}</div>
+                <div className="row-sub">{r.kind === 'institutional' ? 'Kraken Ads · institucional' : r.advertiserName}</div>
               </div>
               <strong>{fmt(r.total)}</strong>
               <button

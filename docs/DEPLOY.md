@@ -1,10 +1,10 @@
-# Midora — Implantação
+# Kraken Ads — Implantação
 
 ## Onde roda
 
-- VPS Hostinger com Coolify 4.4.6, projeto **midora** (`mtn26c9lrj2iktvf1pz13dk4`), ambiente **production**.
-- Aplicação `midora` (`dincx9erqdqpi0tqapejhgqs`): repositório `deimac/midora`, branch `main`, via GitHub App `coolify-xplore`.
-- Domínio provisório: `http://dincx9erqdqpi0tqapejhgqs.31.97.249.115.sslip.io` (sem HTTPS). O domínio definitivo, com HTTPS, deve ser configurado antes do piloto — Service Worker e cache offline do player exigem HTTPS.
+- VPS Hostinger com Coolify 4.4.6, projeto **kraken** (`mtn26c9lrj2iktvf1pz13dk4`), ambiente **production**.
+- Aplicação `kraken` (`dincx9erqdqpi0tqapejhgqs`): repositório `deimac/kraken`, branch `main`, via GitHub App `coolify-xplore`.
+- Domínio provisório: `http://kraken.31.97.249.115.sslip.io` (sem HTTPS; o sslip.io exige o IP no nome, `kraken.sslip.io` não resolve). O domínio definitivo, com HTTPS, deve ser configurado antes do piloto — Service Worker e cache offline do player exigem HTTPS.
 - Isolamento: nenhum recurso compartilhado com outros projetos do Coolify.
 
 ## Configuração da aplicação no Coolify
@@ -27,12 +27,12 @@ Merge/push na `main` dispara build e deploy automáticos. O CI (`.github/workflo
 
 ## Banco de dados
 
-- Postgres 18 `midora-db` (`7lymsttm2meffka7lits7sqs`) no projeto `midora`, sem acesso público, limite 512 MB.
+- Postgres 18 `kraken-db` (`7lymsttm2meffka7lits7sqs`) no projeto `kraken`, sem acesso público, limite 512 MB.
 - Migrações (`apps/api/drizzle/`) são aplicadas automaticamente no start da aplicação.
 
 ## Mídia
 
-- Volume `midora-media` montado em `/data/media` (Persistent Storage da aplicação). Contém os arquivos enviados (`<partnerId>/<mediaId>.<ext>`, `institutional/...`) e `tmp/` para uploads em andamento.
+- Volume `kraken-media` montado em `/data/media` (Persistent Storage da aplicação). Contém os arquivos enviados (`<partnerId>/<mediaId>.<ext>`, `institutional/...`) e `tmp/` para uploads em andamento.
 - Formatos aceitos: JPEG, PNG, WebP; MP4 com H.264 e áudio AAC (ou sem áudio).
 - Proteção do disco (compartilhado com o Postgres): uploads são recusados (507 `storage_full`) se o espaço livre ficaria abaixo de `MIN_FREE_DISK_MB`; cada usuário pode enviar até `UPLOADS_PER_HOUR` arquivos por hora.
 - Backup do volume: pendente (definir junto com o destino externo de backups antes do piloto).
@@ -43,7 +43,7 @@ Merge/push na `main` dispara build e deploy automáticos. O CI (`.github/workflo
 |---|---|---|
 | `PORT` / `HOST` | 3000 / `0.0.0.0` | definidos na imagem |
 | `WEB_DIR` / `PLAYER_DIR` | `/app/web` / `/app/player` | definidos na imagem |
-| `DATABASE_URL` | URL **interna** do `midora-db` | segredo; só runtime (desmarcar "Build Variable") |
+| `DATABASE_URL` | URL **interna** do `kraken-db` | segredo; só runtime (desmarcar "Build Variable") |
 | `COOKIE_SECURE` | `false` | cookies são `Secure` por padrão; `false` só enquanto não houver HTTPS |
 | `ADMIN_EMAIL` | e-mail do admin | usado só se o admin ainda não existir |
 | `ADMIN_PASSWORD` | 12+ caracteres | cria o admin se ele não existir; nunca altera a senha de um admin existente; recomendado remover depois (fica em texto puro no Coolify); com `$`, marcar "Is Literal?" |
@@ -68,16 +68,16 @@ Variáveis novas no Coolify vêm marcadas como "Build Variable"; desmarque nas q
 
 - `GET /api/health` → `{"status":"ok","version":"<commit>"}`.
 - `GET /player/` → página "Kraken Ads Player".
-- Logs: Coolify → midora → Logs (JSON, segredos redigidos).
+- Logs: Coolify → kraken → Logs (JSON, segredos redigidos).
 
 ## Reverter
 
-Coolify → midora → Deployments → escolher o deploy anterior → **Redeploy**; ou `git revert` na `main`.
+Coolify → kraken → Deployments → escolher o deploy anterior → **Redeploy**; ou `git revert` na `main`.
 
 ## Backups e recuperação
 
-- `midora-db`: backup diário às 03:00 (Brasília, cron `0 6 * * *`), 7 cópias, armazenadas na VPS. Destino externo: pendente.
-- Restaurar: Coolify → `midora-db` → Backups → escolher o backup → **Restore**; depois Redeploy da aplicação.
+- `kraken-db`: backup diário às 03:00 (Brasília, cron `0 6 * * *`), 7 cópias, armazenadas na VPS. Destino externo: pendente.
+- Restaurar: Coolify → `kraken-db` → Backups → escolher o backup → **Restore**; depois Redeploy da aplicação.
 - Mídia (Etapa 2): procedimento será adicionado.
 
 ## Problemas conhecidos

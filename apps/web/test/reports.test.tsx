@@ -19,7 +19,7 @@ describe('reports', () => {
     expect(await screen.findByText('Verão')).toBeTruthy();
     expect(screen.getByText('120')).toBeTruthy();
     expect(screen.getByText('Total no período: 150 inserções')).toBeTruthy();
-    expect(screen.getByText(/Midora · institucional/)).toBeTruthy();
+    expect(screen.getByText(/Kraken Ads · institucional/)).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Ver dias de Verão' }));
     expect(screen.getByText('11/10/2026')).toBeTruthy();
     expect(screen.getByText('70')).toBeTruthy();

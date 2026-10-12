@@ -9,7 +9,7 @@ let root: string;
 let app: FastifyInstance;
 
 beforeAll(async () => {
-  root = await mkdtemp(join(tmpdir(), 'midora-static-'));
+  root = await mkdtemp(join(tmpdir(), 'kraken-static-'));
   const web = join(root, 'web');
   const player = join(root, 'player');
   await mkdir(join(web, 'assets'), { recursive: true });

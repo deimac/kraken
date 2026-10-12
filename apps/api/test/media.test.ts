@@ -8,7 +8,7 @@ import { LocalStorage } from '../src/storage/local';
 import { JPEG_BYTES, PNG_BYTES, WEBP_BYTES, buildMp4 } from './helpers/mp4';
 
 let dir: string;
-beforeAll(async () => { dir = await mkdtemp(join(tmpdir(), 'midora-media-')); });
+beforeAll(async () => { dir = await mkdtemp(join(tmpdir(), 'kraken-media-')); });
 afterAll(() => rm(dir, { recursive: true, force: true }));
 
 describe('detect', () => {
