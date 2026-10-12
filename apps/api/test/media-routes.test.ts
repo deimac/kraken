@@ -134,7 +134,7 @@ describe('institutional campaigns', () => {
 
   it('advertisers only see media of their own campaigns', async () => {
     const signup = await req('POST', '/api/public/partners/parceiro-a/advertisers', undefined, {
-      companyName: 'Outra', contactName: 'O', email: 'o@x.com', password: 'senha-anunc-1',
+      companyName: 'Outra', contactName: 'O', email: 'o@x.com', password: 'senha-anunc-1', ...pj(),
     });
     const cookie = `kraken_session=${signup.cookies.find((c) => c.name === 'kraken_session')!.value}`;
     const detail = (await req('GET', `/api/campaigns/${campaignId}`, s.gerenteA)).json();

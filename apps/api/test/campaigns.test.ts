@@ -19,7 +19,7 @@ const req = (method: 'GET' | 'POST' | 'PATCH', url: string, cookie?: string, pay
 
 const signup = async (email: string) => {
   const res = await req('POST', '/api/public/partners/parceiro-a/advertisers', undefined, {
-    companyName: `Empresa ${email}`, contactName: 'C', email, password: 'senha-anunc-1',
+    companyName: `Empresa ${email}`, contactName: 'C', email, password: 'senha-anunc-1', ...pj(),
   });
   return `kraken_session=${res.cookies.find((c) => c.name === 'kraken_session')!.value}`;
 };
