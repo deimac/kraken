@@ -15,6 +15,9 @@ const MESSAGES: Record<string, string> = {
   unsupported_media: 'Formato não aceito. Use JPEG, PNG, WebP ou vídeo MP4 (H.264).',
   file_too_large: 'O arquivo é maior que o limite permitido.',
   file_required: 'Escolha um arquivo.',
+  invalid_document: 'CPF ou CNPJ inválido. Confira os números.',
+  document_taken: 'Já existe um anunciante com este CPF/CNPJ.',
+  has_subscriptions: 'Este anunciante tem campanhas; arquive em vez de excluir.',
   storage_full: 'O servidor está sem espaço para novos arquivos. Avise o administrador.',
 };
 

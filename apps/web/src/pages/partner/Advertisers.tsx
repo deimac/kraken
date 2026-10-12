@@ -1,68 +1,92 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { IconArchive, IconBuildingStore, IconPlus, IconSpeakerphone, IconUser, IconUsers } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { api } from '../../api';
+import { formatDocument } from '../../format';
 import { errorMessage } from '../../messages';
 import type { Advertiser } from '../../types';
-import { Field, Notice, PageHeader } from '../../ui';
+import { EmptyState, Notice, PageHeader, SearchInput, StatCard } from '../../ui';
 
-const EMPTY = { name: '', contactName: '', email: '', phone: '' };
+const fetchList = (archived: boolean, q = '') => {
+  const params = new URLSearchParams();
+  if (q.trim()) params.set('q', q.trim());
+  if (archived) params.set('archived', '1');
+  const qs = params.toString();
+  return api<{ advertisers: Advertiser[] }>(`/api/partner/advertisers${qs ? `?${qs}` : ''}`).then((r) => r.advertisers);
+};
 
 export function Advertisers() {
-  const [list, setList] = useState<Advertiser[]>([]);
+  const [active, setActive] = useState<Advertiser[]>([]);
+  const [archived, setArchived] = useState<Advertiser[]>([]);
+  const [tab, setTab] = useState<'active' | 'archived'>('active');
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState<Advertiser[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState(EMPTY);
-  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api<{ advertisers: Advertiser[] }>('/api/partner/advertisers').then((r) => setList(r.advertisers)).catch((e) => setError(errorMessage(e)));
+    Promise.all([fetchList(false), fetchList(true)])
+      .then(([a, b]) => {
+        setActive(a);
+        setArchived(b);
+      })
+      .catch((e) => setError(errorMessage(e)));
   }, []);
 
-  async function create(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    const body = Object.fromEntries(Object.entries(form).filter(([, v]) => v.trim() !== ''));
-    try {
-      const r = await api<{ advertiser: Advertiser }>('/api/partner/advertisers', { method: 'POST', body });
-      setList((l) => [...l, r.advertiser].sort((a, b) => a.name.localeCompare(b.name)));
-      setForm(EMPTY);
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
+  useEffect(() => {
+    if (!q.trim()) {
+      setResults(null);
+      return;
     }
-  }
+    const timer = setTimeout(() => {
+      fetchList(tab === 'archived', q).then(setResults).catch((e) => setError(errorMessage(e)));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [q, tab]);
 
-  const set = (k: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
+  const shown = results ?? (tab === 'active' ? active : archived);
 
   return (
     <>
-      <PageHeader title="Anunciantes" />
+      <PageHeader
+        title="Anunciantes"
+        action={<Link className="btn btn-primary" to="/parceiro/anunciantes/novo"><IconPlus size={16} />Novo anunciante</Link>}
+      />
       {error && <Notice kind="error">{error}</Notice>}
-      <div className="list" style={{ marginBottom: 16 }}>
-        {list.map((a) => (
-          <div className="row" key={a.id}>
+      <div className="stats">
+        <StatCard icon={<IconUsers size={20} />} label="Ativos" value={active.length} />
+        <StatCard icon={<IconSpeakerphone size={20} />} label="Com campanha no ar" value={active.filter((a) => (a.activeCampaigns ?? 0) > 0).length} />
+        <StatCard icon={<IconArchive size={20} />} label="Arquivados" value={archived.length} />
+      </div>
+      <div className="toolbar">
+        <SearchInput value={q} onChange={setQ} placeholder="Nome, CPF/CNPJ ou e-mail" />
+        <div className="tabs" role="group" aria-label="Situação">
+          <button type="button" aria-pressed={tab === 'active'} onClick={() => setTab('active')}>Ativos</button>
+          <button type="button" aria-pressed={tab === 'archived'} onClick={() => setTab('archived')}>Arquivados</button>
+        </div>
+      </div>
+      <div className="list">
+        {shown.map((a) => (
+          <Link className="row" key={a.id} to={`/parceiro/anunciantes/${a.id}`}>
+            <div className="row-icon" aria-hidden="true">{a.personType === 'pf' ? <IconUser size={18} /> : <IconBuildingStore size={18} />}</div>
             <div className="row-main">
-              <div>{a.name}</div>
+              <div>
+                {a.name}
+                {a.source === 'self_signup' && <span className="chip">autocadastro</span>}
+              </div>
               <div className="row-sub">
-                {[a.contactName, a.email, a.phone].filter(Boolean).join(' · ') || 'Sem contato'} ·{' '}
-                {a.source === 'self_signup' ? 'autocadastro' : 'cadastro manual'}
+                {[formatDocument(a.document), a.city && `${a.city}${a.state ? `/${a.state}` : ''}`, a.contactName, a.email, a.phone]
+                  .filter(Boolean)
+                  .join(' · ') || 'Sem dados de contato'}
               </div>
             </div>
-          </div>
+            {(a.activeCampaigns ?? 0) > 0 && <span className="badge badge-active">{a.activeCampaigns} no ar</span>}
+          </Link>
         ))}
-        {list.length === 0 && <div className="row muted">Nenhum anunciante ainda. Cadastre abaixo ou divulgue sua página pública.</div>}
-      </div>
-      <div className="card">
-        <h2>Novo anunciante</h2>
-        <form className="form" onSubmit={create}>
-          <Field label="Empresa"><input value={form.name} onChange={set('name')} required /></Field>
-          <div className="form-row">
-            <Field label="Contato"><input value={form.contactName} onChange={set('contactName')} /></Field>
-            <Field label="Telefone"><input value={form.phone} onChange={set('phone')} /></Field>
-          </div>
-          <Field label="E-mail"><input type="email" value={form.email} onChange={set('email')} /></Field>
-          <div><button className="btn btn-primary" type="submit" disabled={busy}>Cadastrar anunciante</button></div>
-        </form>
+        {shown.length === 0 && (
+          <EmptyState icon={<IconBuildingStore size={28} />} title={q ? 'Nenhum anunciante encontrado' : tab === 'active' ? 'Nenhum anunciante ainda' : 'Nenhum anunciante arquivado'}>
+            {!q && tab === 'active' && 'Cadastre o primeiro ou divulgue sua página pública.'}
+          </EmptyState>
+        )}
       </div>
     </>
   );

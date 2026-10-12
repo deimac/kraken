@@ -8,6 +8,8 @@ import { CampaignForm } from './pages/campaigns/CampaignForm';
 import { CampaignList } from './pages/campaigns/CampaignList';
 import { Home, TvNotice } from './pages/Home';
 import { Login } from './pages/Login';
+import { AdvertiserDetail } from './pages/partner/AdvertiserDetail';
+import { AdvertiserForm } from './pages/partner/AdvertiserForm';
 import { Advertisers } from './pages/partner/Advertisers';
 import { Plans } from './pages/partner/Plans';
 import { TvAccount } from './pages/partner/TvAccount';
@@ -35,6 +37,9 @@ export function AppRoutes() {
         <Route path="campanhas/nova" element={<CampaignForm base="/parceiro" />} />
         <Route path="campanhas/:id" element={<CampaignDetail base="/parceiro" />} />
         <Route path="anunciantes" element={<Advertisers />} />
+        <Route path="anunciantes/novo" element={<AdvertiserForm />} />
+        <Route path="anunciantes/:id" element={<AdvertiserDetail />} />
+        <Route path="anunciantes/:id/editar" element={<AdvertiserForm />} />
         <Route path="planos" element={<Plans />} />
         <Route path="tv" element={<TvAccount />} />
         <Route path="relatorios" element={<Reports />} />

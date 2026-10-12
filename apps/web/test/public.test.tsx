@@ -20,12 +20,13 @@ describe('public partner page', () => {
     expect(await screen.findByRole('heading', { name: 'Anuncie na Ironberg' })).toBeTruthy();
     expect(screen.getByText('Mais exibições')).toBeTruthy();
     await userEvent.type(screen.getByLabelText('Empresa'), 'Loja Fit');
+    await userEvent.type(screen.getByLabelText('CNPJ'), '11222333000181');
     await userEvent.type(screen.getByLabelText('Seu nome'), 'Bia');
     await userEvent.type(screen.getByLabelText('E-mail'), 'bia@lojafit.com');
     await userEvent.type(screen.getByLabelText('Senha'), 'senha-loja-1');
     await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }));
     expect(calls.find((c) => c.method === 'POST')!.body).toEqual({
-      companyName: 'Loja Fit', contactName: 'Bia', email: 'bia@lojafit.com', password: 'senha-loja-1',
+      companyName: 'Loja Fit', contactName: 'Bia', email: 'bia@lojafit.com', password: 'senha-loja-1', personType: 'pj', document: '11222333000181',
     });
     expect(await screen.findByRole('heading', { name: 'Minhas campanhas' })).toBeTruthy();
   });

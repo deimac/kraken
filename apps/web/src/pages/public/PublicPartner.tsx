@@ -2,10 +2,10 @@ import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { api, ApiError } from '../../api';
 import { useAuth } from '../../auth';
-import { FREQUENCY_LABEL } from '../../format';
+import { FREQUENCY_LABEL, digits, maskDocument, maskPhone } from '../../format';
 import { errorMessage } from '../../messages';
 import { ThemeToggle } from '../../ThemeToggle';
-import type { Plan, User } from '../../types';
+import type { PersonType, Plan, User } from '../../types';
 import { Field, Notice } from '../../ui';
 
 interface PublicData {
@@ -20,7 +20,8 @@ export function PublicPartner() {
   const navigate = useNavigate();
   const [data, setData] = useState<PublicData | null>(null);
   const [missing, setMissing] = useState(false);
-  const [form, setForm] = useState({ companyName: '', contactName: '', email: '', phone: '', password: '' });
+  const [form, setForm] = useState({ companyName: '', contactName: '', email: '', phone: '', password: '', document: '' });
+  const [personType, setPersonType] = useState<PersonType>('pj');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -30,13 +31,18 @@ export function PublicPartner() {
       .catch((e) => (e instanceof ApiError && e.status === 404 ? setMissing(true) : setError(errorMessage(e))));
   }, [slug]);
 
-  const set = (k: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
+  const set = (k: keyof typeof form, mask?: (v: string) => string) => (e: ChangeEvent<HTMLInputElement>) =>
+    setForm({ ...form, [k]: mask ? mask(e.target.value) : e.target.value });
 
   async function signup(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const body = Object.fromEntries(Object.entries(form).filter(([, v]) => v.trim() !== ''));
+    const body = {
+      ...Object.fromEntries(Object.entries(form).filter(([, v]) => v.trim() !== '')),
+      personType,
+      document: digits(form.document),
+    };
     try {
       const r = await api<{ user: User }>(`/api/public/partners/${encodeURIComponent(slug)}/advertisers`, { method: 'POST', body });
       setUser(r.user);
@@ -78,10 +84,28 @@ export function PublicPartner() {
         <h2>Criar conta de anunciante</h2>
         {error && <Notice kind="error">{error}</Notice>}
         <form className="form" onSubmit={signup}>
-          <Field label="Empresa"><input value={form.companyName} onChange={set('companyName')} required /></Field>
+          <div className="form-row">
+            <Field label="Tipo">
+              <select
+                value={personType}
+                onChange={(e) => {
+                  const next = e.target.value as PersonType;
+                  setPersonType(next);
+                  setForm((f) => ({ ...f, document: maskDocument(next, f.document) }));
+                }}
+              >
+                <option value="pj">Empresa (CNPJ)</option>
+                <option value="pf">Pessoa física (CPF)</option>
+              </select>
+            </Field>
+            <Field label={personType === 'pf' ? 'CPF' : 'CNPJ'}>
+              <input inputMode="numeric" value={form.document} onChange={set('document', (v) => maskDocument(personType, v))} required />
+            </Field>
+          </div>
+          <Field label={personType === 'pf' ? 'Nome do negócio' : 'Empresa'}><input value={form.companyName} onChange={set('companyName')} required /></Field>
           <div className="form-row">
             <Field label="Seu nome"><input value={form.contactName} onChange={set('contactName')} required /></Field>
-            <Field label="Telefone"><input value={form.phone} onChange={set('phone')} /></Field>
+            <Field label="Telefone"><input inputMode="tel" value={form.phone} onChange={set('phone', maskPhone)} /></Field>
           </div>
           <Field label="E-mail"><input type="email" autoComplete="email" value={form.email} onChange={set('email')} required /></Field>
           <Field label="Senha">
