@@ -21,3 +21,11 @@ export interface Campaign {
 export interface Media { id: string; mediaType: 'image' | 'video'; mime: string; durationMs: number | null; displaySeconds: number | null }
 export interface Review { action: 'submitted' | 'approved' | 'changes_requested' | 'cancelled'; reason: string | null; createdAt: string }
 export interface CampaignDetail { campaign: Campaign; media: Media | null; reviews: Review[] }
+export interface ReportCampaign {
+  campaignId: string;
+  name: string;
+  kind: 'commercial' | 'institutional';
+  advertiserName: string | null;
+  total: number;
+  days: { day: string; count: number }[];
+}

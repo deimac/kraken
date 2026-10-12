@@ -12,6 +12,7 @@ import { Advertisers } from './pages/partner/Advertisers';
 import { Plans } from './pages/partner/Plans';
 import { TvAccount } from './pages/partner/TvAccount';
 import { PublicPartner } from './pages/public/PublicPartner';
+import { Reports } from './pages/reports/Reports';
 import { Layout } from './ui';
 
 export function AppRoutes() {
@@ -26,6 +27,7 @@ export function AppRoutes() {
         <Route path="parceiros" element={<Partners />} />
         <Route path="planos-midora" element={<MidoraPlans />} />
         <Route path="institucionais" element={<Institutional />} />
+        <Route path="relatorios" element={<Reports />} />
       </Route>
       <Route path="/parceiro" element={<RequireRole role="partner_user"><Layout role="partner_user" /></RequireRole>}>
         <Route index element={<Navigate to="campanhas" replace />} />
@@ -35,12 +37,14 @@ export function AppRoutes() {
         <Route path="anunciantes" element={<Advertisers />} />
         <Route path="planos" element={<Plans />} />
         <Route path="tv" element={<TvAccount />} />
+        <Route path="relatorios" element={<Reports />} />
       </Route>
       <Route path="/anunciante" element={<RequireRole role="advertiser"><Layout role="advertiser" /></RequireRole>}>
         <Route index element={<Navigate to="campanhas" replace />} />
         <Route path="campanhas" element={<CampaignList base="/anunciante" />} />
         <Route path="campanhas/nova" element={<CampaignForm base="/anunciante" />} />
         <Route path="campanhas/:id" element={<CampaignDetail base="/anunciante" />} />
+        <Route path="relatorios" element={<Reports />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

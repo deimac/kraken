@@ -1,5 +1,5 @@
 import {
-  IconBuildingStore, IconDeviceTv, IconLogout, IconReceipt, IconSpeakerphone, IconTags, IconUsersGroup,
+  IconBuildingStore, IconChartBar, IconDeviceTv, IconLogout, IconReceipt, IconSpeakerphone, IconTags, IconUsersGroup,
 } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
@@ -13,14 +13,19 @@ const NAV: Record<Exclude<Role, 'player'>, { to: string; label: string; icon: Re
     { to: '/admin/parceiros', label: 'Parceiros', icon: <IconUsersGroup size={18} /> },
     { to: '/admin/planos-midora', label: 'Planos Midora', icon: <IconReceipt size={18} /> },
     { to: '/admin/institucionais', label: 'Institucionais', icon: <IconSpeakerphone size={18} /> },
+    { to: '/admin/relatorios', label: 'Relatórios', icon: <IconChartBar size={18} /> },
   ],
   partner_user: [
     { to: '/parceiro/campanhas', label: 'Campanhas', icon: <IconSpeakerphone size={18} /> },
     { to: '/parceiro/anunciantes', label: 'Anunciantes', icon: <IconBuildingStore size={18} /> },
     { to: '/parceiro/planos', label: 'Planos de anúncio', icon: <IconTags size={18} /> },
     { to: '/parceiro/tv', label: 'Conta da TV', icon: <IconDeviceTv size={18} /> },
+    { to: '/parceiro/relatorios', label: 'Relatórios', icon: <IconChartBar size={18} /> },
   ],
-  advertiser: [{ to: '/anunciante/campanhas', label: 'Minhas campanhas', icon: <IconSpeakerphone size={18} /> }],
+  advertiser: [
+    { to: '/anunciante/campanhas', label: 'Minhas campanhas', icon: <IconSpeakerphone size={18} /> },
+    { to: '/anunciante/relatorios', label: 'Relatórios', icon: <IconChartBar size={18} /> },
+  ],
 };
 
 export function Layout({ role }: { role: Exclude<Role, 'player'> }) {
