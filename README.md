@@ -29,8 +29,8 @@ pnpm dev:web      # painel, com proxy de /api para a API
 pnpm dev:player   # player, com proxy de /api para a API
 ```
 
-Demonstração local sem banco: `pnpm build && pnpm --filter @midora/api demo` → http://localhost:3100 (usuários `admin@demo.test`, `parceiro@demo.test`, `anunciante@demo.test`; senha em `apps/api/scripts/demo.ts`).
+Demonstração local sem banco: `pnpm build && pnpm --filter @kraken/api demo` → http://localhost:3100 (usuários `admin@demo.test`, `parceiro@demo.test`, `anunciante@demo.test`; senha em `apps/api/scripts/demo.ts`).
 
-Migrações: alterar `apps/api/src/db/schema.ts` e rodar `pnpm --filter @midora/api db:generate`. Elas são aplicadas no start da API.
+Migrações: alterar `apps/api/src/db/schema.ts` e rodar `pnpm --filter @kraken/api db:generate`. Elas são aplicadas no start da API.
 
 Verificações: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.

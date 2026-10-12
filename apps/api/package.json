@@ -1,5 +1,5 @@
 {
-  "name": "@midora/api",
+  "name": "@kraken/api",
   "private": true,
   "type": "module",
   "files": [
@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
-    "@midora/shared": "workspace:*",
+    "@kraken/shared": "workspace:*",
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
     "drizzle-kit": "^0.31.11",

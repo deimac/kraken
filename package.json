@@ -1,5 +1,5 @@
 {
-  "name": "midora",
+  "name": "kraken",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.27.0",
@@ -11,9 +11,9 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
-    "dev:api": "pnpm --filter @midora/api dev",
-    "dev:web": "pnpm --filter @midora/web dev",
-    "dev:player": "pnpm --filter @midora/player dev"
+    "dev:api": "pnpm --filter @kraken/api dev",
+    "dev:web": "pnpm --filter @kraken/web dev",
+    "dev:player": "pnpm --filter @kraken/player dev"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

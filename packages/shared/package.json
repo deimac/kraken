@@ -1,5 +1,5 @@
 {
-  "name": "@midora/shared",
+  "name": "@kraken/shared",
   "private": true,
   "type": "module",
   "exports": {

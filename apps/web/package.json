@@ -1,5 +1,5 @@
 {
-  "name": "@midora/web",
+  "name": "@kraken/web",
   "private": true,
   "type": "module",
   "scripts": {
