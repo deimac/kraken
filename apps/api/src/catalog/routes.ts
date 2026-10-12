@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { requireRole } from '../auth/guard';
 import type { Db } from '../db/client';
 import { effectiveStatus } from '../campaigns/status';
-import { isUniqueViolation } from '../db/errors';
+import { isForeignKeyViolation, isUniqueViolation } from '../db/errors';
 import { FREQUENCY_LEVELS, PERSON_TYPES, advertisers, campaigns, plans, plays, users } from '../db/schema';
 import { parse } from '../http/validation';
 import { isValidDocument, onlyDigits } from './document';
@@ -51,7 +51,7 @@ export const catalogRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db })
 
   const own = (id: string, partnerId: string) => and(eq(advertisers.id, id), eq(advertisers.partnerId, partnerId));
   const activeCampaigns = sql<number>`(select count(*)::int from ${campaigns} c where c.advertiser_id = "advertisers"."id"
-    and c.status = 'approved' and c.starts_at <= now() and c.ends_at > now())`;
+    and "advertisers"."archived_at" is null and c.status = 'approved' and c.starts_at <= now() and c.ends_at > now())`;
   const like = (q: string) => `%${q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
 
   app.get('/api/partner/advertisers', partnerOnly, async (req, reply) => {
@@ -126,11 +126,12 @@ export const catalogRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db })
     if (!body) return reply;
     const [current] = await db.select().from(advertisers).where(own(params.id, req.user!.partnerId!));
     if (!current) return reply.code(404).send({ error: 'not_found' });
-    if (body.document !== undefined || body.personType !== undefined) {
-      const document = body.document === undefined ? current.document : body.document;
-      if (!document || !isValidDocument(body.personType ?? current.personType, document)) {
-        return reply.code(400).send({ error: 'invalid_document' });
-      }
+    // Legacy rows may have no document: only validate when the document is sent or the type changes over an existing one.
+    const personType = body.personType ?? current.personType;
+    if (body.document !== undefined) {
+      if (!body.document || !isValidDocument(personType, body.document)) return reply.code(400).send({ error: 'invalid_document' });
+    } else if (personType !== current.personType && current.document && !isValidDocument(personType, current.document)) {
+      return reply.code(400).send({ error: 'invalid_document' });
     }
     try {
       const [advertiser] = await db
@@ -166,10 +167,16 @@ export const catalogRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db })
     if (!advertiser) return reply.code(404).send({ error: 'not_found' });
     const [used] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.advertiserId, advertiser.id)).limit(1);
     if (used) return reply.code(409).send({ error: 'has_subscriptions' });
-    await db.transaction(async (tx) => {
-      await tx.delete(users).where(eq(users.advertiserId, advertiser.id));
-      await tx.delete(advertisers).where(eq(advertisers.id, advertiser.id));
-    });
+    try {
+      await db.transaction(async (tx) => {
+        await tx.delete(users).where(eq(users.advertiserId, advertiser.id));
+        await tx.delete(advertisers).where(eq(advertisers.id, advertiser.id));
+      });
+    } catch (err) {
+      // A campaign created between the check and the delete trips the FK (restrict): same answer as the check.
+      if (isForeignKeyViolation(err)) return reply.code(409).send({ error: 'has_subscriptions' });
+      throw err;
+    }
     return reply.code(204).send();
   });
 

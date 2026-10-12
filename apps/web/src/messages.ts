@@ -17,6 +17,7 @@ const MESSAGES: Record<string, string> = {
   file_required: 'Escolha um arquivo.',
   invalid_document: 'CPF ou CNPJ inválido. Confira os números.',
   document_taken: 'Já existe um anunciante com este CPF/CNPJ.',
+  advertiser_archived: 'Este anunciante está arquivado. Desarquive-o para criar campanhas.',
   has_subscriptions: 'Este anunciante tem campanhas; arquive em vez de excluir.',
   storage_full: 'O servidor está sem espaço para novos arquivos. Avise o administrador.',
 };

@@ -130,13 +130,14 @@ export const campaignRoutes: FastifyPluginAsync<{ db: Db; storage?: LocalStorage
       advertiserId = user.advertiserId!;
     } else {
       if (!body.advertiserId) return reply.code(400).send({ error: 'invalid_request' });
-      const [adv] = await db
-        .select({ id: advertisers.id })
-        .from(advertisers)
-        .where(and(eq(advertisers.id, body.advertiserId), eq(advertisers.partnerId, user.partnerId!)));
-      if (!adv) return reply.code(404).send({ error: 'not_found' });
-      advertiserId = adv.id;
+      advertiserId = body.advertiserId;
     }
+    const [adv] = await db
+      .select({ id: advertisers.id, archivedAt: advertisers.archivedAt })
+      .from(advertisers)
+      .where(and(eq(advertisers.id, advertiserId), eq(advertisers.partnerId, user.partnerId!)));
+    if (!adv) return reply.code(404).send({ error: 'not_found' });
+    if (adv.archivedAt) return reply.code(409).send({ error: 'advertiser_archived' });
     if (body.endsAt <= body.startsAt) return reply.code(400).send({ error: 'invalid_period' });
     const plan = await activePlan(user.partnerId!, body.planId);
     if (!plan) return reply.code(400).send({ error: 'invalid_plan' });

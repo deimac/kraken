@@ -117,6 +117,30 @@ describe('advertisers', () => {
     expect((await req('GET', `/api/partner/advertisers/${adv!.id}`, s.gerenteA)).statusCode).toBe(404);
   });
 
+  it('saves a legacy advertiser edited through the form (personType resent, no document)', async () => {
+    const [legacy] = await t.db.insert(advertisers).values({ partnerId: s.partnerA.id, name: 'Legado', source: 'manual' }).returning();
+    const res = await req('PATCH', `/api/partner/advertisers/${legacy!.id}`, s.gerenteA, { name: 'Legado', personType: 'pj', phone: '1155550000', contactName: null });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('does not count campaigns of archived advertisers as on air', async () => {
+    const [adv] = await t.db.insert(advertisers).values({ partnerId: s.partnerA.id, name: 'Arquivado no ar', source: 'manual' }).returning();
+    const [plan] = await t.db.insert(plans).values({ partnerId: s.partnerA.id, name: 'P2', frequencyLevel: 'low' }).returning();
+    const now = Date.now();
+    await t.db.insert(campaigns).values({
+      kind: 'commercial', partnerId: s.partnerA.id, advertiserId: adv!.id, planId: plan!.id, name: 'C', status: 'approved',
+      frequencyLevel: 'low', startsAt: new Date(now - 864e5), endsAt: new Date(now + 864e5),
+    });
+    await req('POST', `/api/partner/advertisers/${adv!.id}/archive`, s.gerenteA);
+    const list = await req('GET', '/api/partner/advertisers?archived=1&q=Arquivado no ar', s.gerenteA);
+    expect(list.json().advertisers[0].activeCampaigns).toBe(0);
+    const created = await req('POST', '/api/campaigns', s.gerenteA, {
+      advertiserId: adv!.id, planId: plan!.id, name: 'Nova', startsAt: new Date(now).toISOString(), endsAt: new Date(now + 864e5).toISOString(),
+    });
+    expect(created.statusCode).toBe(409);
+    expect(created.json().error).toBe('advertiser_archived');
+  });
+
   it('isolates advertisers between partners', async () => {
     const res = await req('POST', '/api/partner/advertisers', s.gerenteA, { name: 'Só do A', personType: 'pf', document: '39053344705' });
     const id = res.json().advertiser.id;
