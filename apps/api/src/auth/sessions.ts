@@ -11,6 +11,7 @@ export interface SessionUser {
   email: string;
   role: Role;
   partnerId: string | null;
+  advertiserId: string | null;
 }
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -30,6 +31,7 @@ export async function findSessionUser(db: Db, token: string): Promise<SessionUse
       email: users.email,
       role: users.role,
       partnerId: users.partnerId,
+      advertiserId: users.advertiserId,
       partnerStatus: partners.status,
     })
     .from(sessions)
@@ -39,7 +41,7 @@ export async function findSessionUser(db: Db, token: string): Promise<SessionUse
     .limit(1);
   if (!row) return null;
   if (row.role !== 'admin' && row.partnerStatus !== 'active') return null;
-  return { id: row.id, email: row.email, role: row.role, partnerId: row.partnerId };
+  return { id: row.id, email: row.email, role: row.role, partnerId: row.partnerId, advertiserId: row.advertiserId };
 }
 
 export async function deleteSession(db: Db, token: string): Promise<void> {

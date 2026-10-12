@@ -1,7 +1,7 @@
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import { eq } from 'drizzle-orm';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import type { Db } from '../db/client';
 import { ROLES, partners, users } from '../db/schema';
@@ -16,6 +16,12 @@ declare module 'fastify' {
   interface FastifyRequest {
     user: SessionUser | null;
   }
+}
+
+export function setSessionCookie(reply: FastifyReply, token: string, expiresAt: Date, cookieSecure: boolean) {
+  reply.setCookie(SESSION_COOKIE, token, {
+    path: '/', httpOnly: true, sameSite: 'lax', secure: cookieSecure, expires: expiresAt,
+  });
 }
 
 const LoginBody = z
@@ -58,6 +64,7 @@ export async function registerAuth(
         email: users.email,
         role: users.role,
         partnerId: users.partnerId,
+        advertiserId: users.advertiserId,
         passwordHash: users.passwordHash,
         partnerStatus: partners.status,
       })
@@ -72,11 +79,9 @@ export async function registerAuth(
       return reply.code(401).send({ error: 'invalid_credentials' });
     }
     const { token, expiresAt } = await createSession(db, user);
-    reply.setCookie(SESSION_COOKIE, token, {
-      path: '/', httpOnly: true, sameSite: 'lax', secure: cookieSecure, expires: expiresAt,
-    });
-    const { id, email, role, partnerId } = user;
-    return { user: { id, email, role, partnerId } };
+    setSessionCookie(reply, token, expiresAt, cookieSecure);
+    const { id, email, role, partnerId, advertiserId } = user;
+    return { user: { id, email, role, partnerId, advertiserId } };
   });
 
   app.post('/api/auth/logout', async (req, reply) => {

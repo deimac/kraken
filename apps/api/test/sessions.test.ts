@@ -41,7 +41,7 @@ describe('sessions', () => {
     expect(rows[0]!.id).not.toBe(token);
     expect(expiresAt.getTime() - Date.now()).toBeGreaterThan(SESSION_TTL_MS.staff - 60_000);
     expect(await findSessionUser(db, token)).toEqual({
-      id: u.id, email: 'u@s1.com', role: 'partner_user', partnerId: p.id,
+      id: u.id, email: 'u@s1.com', role: 'partner_user', partnerId: p.id, advertiserId: null,
     });
   });
 

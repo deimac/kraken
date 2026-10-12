@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import type { Db } from '../src/db/client';
 import { isUniqueViolation } from '../src/db/errors';
-import { partners, users } from '../src/db/schema';
+import { advertisers, campaigns, partners, plans, users } from '../src/db/schema';
 import { createTestDb } from './helpers/db';
 
 let db: Db;
@@ -50,4 +50,30 @@ it('rejects non-positive weights', async () => {
   await expect(
     db.insert(partners).values({ name: 'C', slug: 'c', weightHigh: 0 }),
   ).rejects.toThrow();
+});
+
+it('requires advertiser users to point to an advertiser and others not to', async () => {
+  const [adv] = await db.insert(advertisers).values({ partnerId, name: 'Loja', source: 'manual' }).returning();
+  await expect(
+    db.insert(users).values({ email: 'adv@x.com', passwordHash: 'h', role: 'advertiser', partnerId }),
+  ).rejects.toThrow();
+  await expect(
+    db.insert(users).values({ email: 'pu@x.com', passwordHash: 'h', role: 'partner_user', partnerId, advertiserId: adv!.id }),
+  ).rejects.toThrow();
+  await db.insert(users).values({ email: 'ok@x.com', passwordHash: 'h', role: 'advertiser', partnerId, advertiserId: adv!.id });
+});
+
+it('enforces commercial vs institutional campaign scope and period', async () => {
+  const [adv] = await db.insert(advertisers).values({ partnerId, name: 'Loja 2', source: 'manual' }).returning();
+  const [plan] = await db.insert(plans).values({ partnerId, name: 'Básico', frequencyLevel: 'low' }).returning();
+  const base = { name: 'C', startsAt: new Date('2026-01-01'), endsAt: new Date('2026-02-01'), frequencyLevel: 'low' as const };
+  await expect(db.insert(campaigns).values({ ...base, kind: 'commercial', partnerId })).rejects.toThrow();
+  await expect(
+    db.insert(campaigns).values({ ...base, kind: 'institutional', partnerId, advertiserId: adv!.id, planId: plan!.id }),
+  ).rejects.toThrow();
+  await expect(
+    db.insert(campaigns).values({ ...base, kind: 'institutional', endsAt: new Date('2025-12-01') }),
+  ).rejects.toThrow();
+  await db.insert(campaigns).values({ ...base, kind: 'commercial', partnerId, advertiserId: adv!.id, planId: plan!.id });
+  await db.insert(campaigns).values({ ...base, kind: 'institutional', status: 'approved' });
 });

@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
-  boolean, check, index, integer, pgTable, text, timestamp, uniqueIndex, uuid,
+  bigint, boolean, check, index, integer, pgTable, text, timestamp, uniqueIndex, uuid, type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 
 const timestamps = {
@@ -35,6 +35,24 @@ export const partners = pgTable(
   ],
 );
 
+export const advertisers = pgTable(
+  'advertisers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id').notNull().references(() => partners.id, { onDelete: 'restrict' }),
+    name: text('name').notNull(),
+    contactName: text('contact_name'),
+    email: text('email'),
+    phone: text('phone'),
+    source: text('source', { enum: ['manual', 'self_signup'] }).notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    check('advertisers_source_check', sql`${t.source} in ('manual', 'self_signup')`),
+    index('advertisers_partner_idx').on(t.partnerId),
+  ],
+);
+
 export const ROLES = ['admin', 'partner_user', 'advertiser', 'player'] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -46,12 +64,14 @@ export const users = pgTable(
     passwordHash: text('password_hash').notNull(),
     role: text('role', { enum: ROLES }).notNull(),
     partnerId: uuid('partner_id').references(() => partners.id, { onDelete: 'restrict' }),
+    advertiserId: uuid('advertiser_id').references(() => advertisers.id, { onDelete: 'restrict' }),
     ...timestamps,
   },
   (t) => [
     check('users_role_check', sql`${t.role} in ('admin', 'partner_user', 'advertiser', 'player')`),
     // admin has no partner; every other role belongs to exactly one partner.
     check('users_partner_scope_check', sql`(${t.role} = 'admin') = (${t.partnerId} is null)`),
+    check('users_advertiser_scope_check', sql`(${t.role} = 'advertiser') = (${t.advertiserId} is not null)`),
     uniqueIndex('users_one_player_per_partner').on(t.partnerId).where(sql`${t.role} = 'player'`),
     index('users_partner_idx').on(t.partnerId),
   ],
@@ -66,4 +86,99 @@ export const sessions = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('sessions_user_idx').on(t.userId)],
+);
+
+export const FREQUENCY_LEVELS = ['low', 'medium', 'high'] as const;
+export type FrequencyLevel = (typeof FREQUENCY_LEVELS)[number];
+
+export const plans = pgTable(
+  'plans',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id').notNull().references(() => partners.id, { onDelete: 'restrict' }),
+    name: text('name').notNull(),
+    description: text('description').notNull().default(''),
+    frequencyLevel: text('frequency_level', { enum: FREQUENCY_LEVELS }).notNull(),
+    active: boolean('active').notNull().default(true),
+    ...timestamps,
+  },
+  (t) => [
+    check('plans_frequency_check', sql`${t.frequencyLevel} in ('low', 'medium', 'high')`),
+    index('plans_partner_idx').on(t.partnerId),
+  ],
+);
+
+export const CAMPAIGN_STATUSES = ['draft', 'pending_review', 'changes_requested', 'approved', 'cancelled'] as const;
+export type CampaignStatus = (typeof CAMPAIGN_STATUSES)[number];
+
+export const campaigns = pgTable(
+  'campaigns',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id').references(() => partners.id, { onDelete: 'restrict' }),
+    advertiserId: uuid('advertiser_id').references(() => advertisers.id, { onDelete: 'restrict' }),
+    planId: uuid('plan_id').references(() => plans.id, { onDelete: 'restrict' }),
+    kind: text('kind', { enum: ['commercial', 'institutional'] }).notNull(),
+    name: text('name').notNull(),
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    status: text('status', { enum: CAMPAIGN_STATUSES }).notNull().default('draft'),
+    frequencyLevel: text('frequency_level', { enum: FREQUENCY_LEVELS }).notNull(),
+    currentMediaId: uuid('current_media_id').references((): AnyPgColumn => media.id, { onDelete: 'set null' }),
+    ...timestamps,
+  },
+  (t) => [
+    check('campaigns_kind_check', sql`${t.kind} in ('commercial', 'institutional')`),
+    check(
+      'campaigns_status_check',
+      sql`${t.status} in ('draft', 'pending_review', 'changes_requested', 'approved', 'cancelled')`,
+    ),
+    check('campaigns_frequency_check', sql`${t.frequencyLevel} in ('low', 'medium', 'high')`),
+    check('campaigns_period_check', sql`${t.endsAt} > ${t.startsAt}`),
+    check(
+      'campaigns_scope_check',
+      sql`(${t.kind} = 'commercial' and ${t.partnerId} is not null and ${t.advertiserId} is not null and ${t.planId} is not null)
+       or (${t.kind} = 'institutional' and ${t.partnerId} is null and ${t.advertiserId} is null and ${t.planId} is null)`,
+    ),
+    index('campaigns_partner_status_idx').on(t.partnerId, t.status),
+    index('campaigns_advertiser_idx').on(t.advertiserId),
+  ],
+);
+
+export const media = pgTable(
+  'media',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id').references(() => partners.id, { onDelete: 'restrict' }),
+    campaignId: uuid('campaign_id').notNull().references((): AnyPgColumn => campaigns.id, { onDelete: 'restrict' }),
+    storageKey: text('storage_key').notNull().unique(),
+    mediaType: text('media_type', { enum: ['image', 'video'] }).notNull(),
+    mime: text('mime').notNull(),
+    sizeBytes: bigint('size_bytes', { mode: 'number' }).notNull(),
+    durationMs: integer('duration_ms'),
+    sha256: text('sha256').notNull(),
+    displaySeconds: integer('display_seconds'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('media_type_check', sql`${t.mediaType} in ('image', 'video')`),
+    check('media_display_check', sql`(${t.mediaType} = 'image') = (${t.displaySeconds} is not null)`),
+    index('media_campaign_idx').on(t.campaignId),
+  ],
+);
+
+export const campaignReviews = pgTable(
+  'campaign_reviews',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    campaignId: uuid('campaign_id').notNull().references(() => campaigns.id, { onDelete: 'cascade' }),
+    action: text('action', { enum: ['submitted', 'approved', 'changes_requested', 'cancelled'] }).notNull(),
+    reason: text('reason'),
+    actorUserId: uuid('actor_user_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('campaign_reviews_action_check', sql`${t.action} in ('submitted', 'approved', 'changes_requested', 'cancelled')`),
+    index('campaign_reviews_campaign_idx').on(t.campaignId),
+  ],
 );
