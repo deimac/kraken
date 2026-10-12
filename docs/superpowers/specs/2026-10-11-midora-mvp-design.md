@@ -21,6 +21,7 @@ Plataforma web para exibir anúncios (imagens e vídeos) em TVs de estabelecimen
 | D7 | Três áreas: super admin (controle do sistema), parceiro (configura e aprova anúncios) e anunciante. |
 | D8 | Dois tipos de plano: **Planos Midora** (o Midora vende ao parceiro) e **Planos de anúncio** (o parceiro vende ao anunciante). No MVP, Planos Midora são só cadastro (nome, descrição, valor de referência) e vínculo com o parceiro — sem cobrança e sem limites aplicados. |
 | D9 | Página pública `/p/<slug>` simples (planos de anúncio + autocadastro) no MVP; a landing page completa do parceiro substitui essa página depois, no mesmo endereço. |
+| D11 | Relatórios por dia no horário de Brasília (`America/Sao_Paulo`), para todos os parceiros. |
 | D10 | Painel com tema claro (grafite + esmeralda) e noturno (noite + esmeralda), botão lua/sol; sem azul. |
 
 ## 3. Arquitetura

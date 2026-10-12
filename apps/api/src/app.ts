@@ -13,6 +13,7 @@ import type { UploadLimits } from './media/upload';
 import { adminPartnerRoutes } from './partners/admin-routes';
 import { partnerRoutes } from './partners/partner-routes';
 import { playerRoutes } from './player/routes';
+import { playRoutes } from './plays/routes';
 import { publicRoutes } from './public/routes';
 import { registerStatic } from './static';
 import type { LocalStorage } from './storage/local';
@@ -49,6 +50,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     await app.register(catalogRoutes, { db: opts.db });
     await app.register(publicRoutes, { db: opts.db, cookieSecure: opts.cookieSecure ?? false });
     await app.register(playerRoutes, { db: opts.db, cookieSecure: opts.cookieSecure ?? false });
+    await app.register(playRoutes, { db: opts.db });
     await app.register(multipart, { limits: { fileSize: opts.uploadLimits?.maxVideoBytes, files: 1, fields: 10 } });
     await app.register(campaignRoutes, { db: opts.db, storage: opts.storage, uploadLimits: opts.uploadLimits });
     await app.register(adminCampaignRoutes, { db: opts.db, storage: opts.storage, uploadLimits: opts.uploadLimits });
