@@ -28,8 +28,8 @@ async function start() {
     },
   });
   const plays = createPlayQueue({
-    send: (batch) =>
-      api<{ accepted: string[]; rejected: string[] }>('/api/player/plays', { method: 'POST', body: { plays: batch } }),
+    send: (batch, sentAt) =>
+      api<{ accepted: string[]; rejected: string[] }>('/api/player/plays', { method: 'POST', body: { plays: batch, sentAt } }),
   });
   const flush = () => void plays.flush();
   setInterval(flush, 30_000);

@@ -94,6 +94,18 @@ describe('POST /api/player/plays', () => {
     expect((await req('POST', '/api/player/plays', tvA, { plays: [{ ...play(campA, 'not-a-uuid') }] })).statusCode).toBe(400);
   });
 
+  it('corrects a TV clock that is off, using the time it says it sent the batch', async () => {
+    const skew = 2 * 60 * 60_000; // TV runs two hours fast
+    const tvNow = new Date(Date.now() + skew);
+    const res = await req('POST', '/api/player/plays', tvA, {
+      sentAt: tvNow.toISOString(),
+      plays: [play(campA, ID(60), new Date(tvNow.getTime() - 60_000).toISOString())],
+    });
+    expect(res.json()).toEqual({ accepted: [ID(60)], rejected: [] });
+    const [row] = await t.db.select().from(plays).where(eq(plays.id, ID(60)));
+    expect(Math.abs(row!.playedAt.getTime() - (Date.now() - 60_000))).toBeLessThan(10_000);
+  });
+
   it('is only for TVs', async () => {
     expect((await req('POST', '/api/player/plays', s.gerenteA, { plays: [play(campA, ID(50))] })).statusCode).toBe(401);
   });

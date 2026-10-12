@@ -87,6 +87,15 @@ describe('plays report', () => {
     expect((await req(`/api/reports/plays?${RANGE}`)).statusCode).toBe(401);
   });
 
+  it('neutralizes spreadsheet formulas in names', async () => {
+    const [adv] = await t.db.insert(advertisers).values({ partnerId: s.partnerA.id, name: '@Loja', source: 'manual' }).returning();
+    const evil = await campaign(s.partnerA.id, '=HYPERLINK("http://evil")', adv!.id);
+    await record(evil, s.partnerA.id, '2026-10-11T12:00:00Z');
+    const res = await req(`/api/reports/plays.csv?${RANGE}`, s.gerenteA);
+    expect(res.body).toContain(`"'=HYPERLINK(""http://evil"")";'@Loja;comercial;2026-10-11;1`);
+    expect(res.body).not.toMatch(/(^|;)[=@]/m);
+  });
+
   it('exports CSV for Excel', async () => {
     const res = await req(`/api/reports/plays.csv?${RANGE}`, advCookie);
     expect(res.headers['content-type']).toContain('text/csv');

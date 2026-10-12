@@ -51,6 +51,43 @@ describe('play queue', () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
+  it('drops a batch the server refuses as invalid instead of blocking forever', async () => {
+    let calls = 0;
+    const send = vi.fn(async (batch: PlayEvent[]) => {
+      calls++;
+      if (calls === 1) throw Object.assign(new Error('bad'), { status: 400 });
+      return { accepted: batch.map((e) => e.id), rejected: [] };
+    });
+    const q = createPlayQueue({ send, storage: memoryStorage(), batchSize: 2 });
+    for (let i = 1; i <= 4; i++) q.add(ev(i));
+    expect(await q.flush()).toBe(true);
+    expect(q.size()).toBe(0);
+    expect(send.mock.calls[1]![0].map((e) => e.id)).toEqual(['id-3', 'id-4']);
+  });
+
+  it('ignores malformed entries left in storage', () => {
+    const storage = memoryStorage();
+    storage.setItem('midora-plays', JSON.stringify([ev(1), { id: 2 }, null, 'x']));
+    expect(createPlayQueue({ send: vi.fn(), storage }).size()).toBe(1);
+  });
+
+  it('keeps the default backlog within what browser storage can hold', () => {
+    const q = createPlayQueue({ send: vi.fn(), storage: null });
+    for (let i = 0; i < 20_005; i++) q.add(ev(i));
+    expect(q.size()).toBe(20_000);
+  });
+
+  it('sends the TV clock with each batch so the server can correct skew', async () => {
+    const send = vi.fn(async (batch: PlayEvent[], sentAt: string) => {
+      expect(sentAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      return { accepted: batch.map((e) => e.id), rejected: [] };
+    });
+    const q = createPlayQueue({ send, storage: null });
+    q.add(ev(1));
+    await q.flush();
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
   it('caps the backlog, dropping the oldest', () => {
     const q = createPlayQueue({ send: vi.fn(), storage: memoryStorage(), max: 3 });
     for (let i = 1; i <= 5; i++) q.add(ev(i));

@@ -19,6 +19,8 @@ const Batch = z
       )
       .min(1)
       .max(200),
+    // TV clock when the batch was sent: lets the server correct a TV whose clock is wrong.
+    sentAt: z.iso.datetime({ offset: true }).optional(),
   })
   .strict();
 
@@ -41,13 +43,14 @@ export const playRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db }) =>
       .where(inArray(media.id, mediaIds));
     const byId = new Map(known.map((m) => [m.id, m]));
     const now = Date.now();
+    const skew = body.sentAt ? now - new Date(body.sentAt).getTime() : 0;
 
     const accepted: string[] = [];
     const rejected: string[] = [];
     const rows: (typeof plays.$inferInsert)[] = [];
     for (const p of body.plays) {
       const m = byId.get(p.mediaId);
-      const at = new Date(p.playedAt).getTime();
+      const at = new Date(p.playedAt).getTime() + skew;
       const ok =
         m !== undefined &&
         m.campaignId === p.campaignId &&
@@ -63,6 +66,8 @@ export const playRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db }) =>
     }
     // Resends are expected (the TV may have lost the response): duplicates are kept once.
     if (rows.length) await db.insert(plays).values(rows).onConflictDoNothing({ target: plays.id });
+    // Rejected plays are dropped by the TV: keep a trace so lost insertions are visible.
+    if (rejected.length) req.log.warn({ partnerId, rejected: rejected.length, skewMs: skew }, 'plays rejected');
     return { accepted, rejected };
   });
 };

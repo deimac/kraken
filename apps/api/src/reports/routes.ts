@@ -18,7 +18,11 @@ function scopeFor(req: FastifyRequest): ReportScope {
   return { kind: 'all' };
 }
 
-const csvCell = (v: string) => (/[;"\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+/** Quotes when needed and defuses spreadsheet formulas (names come from self-signup advertisers). */
+function csvCell(raw: string): string {
+  const v = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+  return /[;"\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
 
 export const reportRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db }) => {
   const guard = { preHandler: requireRole('admin', 'partner_user', 'advertiser') };
