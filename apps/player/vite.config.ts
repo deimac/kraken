@@ -1,10 +1,9 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   base: '/player/',
-  plugins: [react()],
+  build: { target: 'es2017', cssTarget: 'chrome61' },
   server: { port: 5174, proxy: { '/api': 'http://localhost:3000' } },
-  test: { environment: 'jsdom' },
+  test: { environment: 'jsdom', include: ['test/**/*.test.ts'] },
 });
