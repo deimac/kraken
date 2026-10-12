@@ -4,6 +4,7 @@ import { DomScreen } from './dom-screen';
 import { renderLogin } from './login';
 import { createManifestClient } from './manifest';
 import { runPlayer } from './player';
+import { createPlayQueue, playEvent } from './queue';
 import { isTvSession } from './session';
 import './style.css';
 import type { Manifest } from './types';
@@ -26,12 +27,27 @@ async function start() {
       location.reload();
     },
   });
+  const plays = createPlayQueue({
+    send: (batch) =>
+      api<{ accepted: string[]; rejected: string[] }>('/api/player/plays', { method: 'POST', body: { plays: batch } }),
+  });
+  const flush = () => void plays.flush();
+  setInterval(flush, 30_000);
+  window.addEventListener('online', flush);
+  flush(); // plays left over from before a restart
+
   await manifest.start();
   await runPlayer({
     screen,
     manifest: () => manifest.current(),
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     running: () => true,
+    // Only ads shown to the end count as insertions (spec §9).
+    onPlayed: (item, result) => {
+      if (result !== 'completed') return;
+      plays.add(playEvent(item));
+      if (plays.size() >= 50) flush();
+    },
   });
 }
 

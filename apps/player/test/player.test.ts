@@ -123,5 +123,16 @@ describe('runPlayer', () => {
     });
     expect(played).not.toContain('m-B');
   });
+
+  it('reports only completed plays', async () => {
+    const screen = new FakeScreen();
+    screen.results = ['completed', 'failed', 'completed'];
+    const played: string[] = [];
+    await runPlayer({
+      screen, manifest: () => manifest([item('A'), item('B')]), sleep: async () => {}, running: until(3),
+      onPlayed: (i, result) => { if (result === 'completed') played.push(i.campaignId); },
+    });
+    expect(played).toHaveLength(2);
+  });
 });
 
