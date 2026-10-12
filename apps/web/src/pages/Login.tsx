@@ -5,6 +5,13 @@ import { errorMessage } from '../messages';
 import { ThemeToggle } from '../ThemeToggle';
 import { Field, Notice } from '../ui';
 
+/** Only in-app absolute paths; rejects "//host", backslashes and control characters (open redirect). */
+export function safeReturnPath(back: string | null): string | null {
+  if (!back || !back.startsWith('/') || back.startsWith('//') || back.includes('\\')) return null;
+  if ([...back].some((ch) => ch.charCodeAt(0) < 0x20)) return null;
+  return back;
+}
+
 export function Login() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
@@ -22,8 +29,7 @@ export function Login() {
     setError(null);
     try {
       const u = await login(email, password);
-      const back = params.get('voltar');
-      navigate(back && back.startsWith('/') ? back : homeFor(u), { replace: true });
+      navigate(safeReturnPath(params.get('voltar')) ?? homeFor(u), { replace: true });
     } catch (err) {
       setError(errorMessage(err));
     } finally {

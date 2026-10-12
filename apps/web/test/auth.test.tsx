@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { safeReturnPath } from '../src/pages/Login';
 import { mockApi, reply } from './mock-api';
 import { advertiserUser, partnerUser, renderAt } from './render';
 
@@ -64,5 +65,20 @@ describe('login and session', () => {
     renderAt('/parceiro/campanhas');
     await userEvent.click(await screen.findByRole('button', { name: 'Sair' }));
     expect(await screen.findByRole('heading', { name: 'Entrar' })).toBeTruthy();
+  });
+
+  it('sends bare area URLs to the area home', async () => {
+    mockApi({ 'GET /api/auth/me': { user: partnerUser }, 'GET /api/campaigns': empty });
+    renderAt('/parceiro');
+    expect(await screen.findByRole('heading', { name: 'Campanhas' })).toBeTruthy();
+  });
+});
+
+describe('safeReturnPath', () => {
+  it('accepts only same-origin app paths', () => {
+    expect(safeReturnPath('/parceiro/planos')).toBe('/parceiro/planos');
+    for (const bad of ['//evil.example', '/\\evil.example', 'https://evil.example', '/\t/evil.example', 'parceiro', null]) {
+      expect(safeReturnPath(bad)).toBeNull();
+    }
   });
 });

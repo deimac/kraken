@@ -22,11 +22,13 @@ export function AppRoutes() {
       <Route path="/tv" element={<TvNotice />} />
       <Route path="/p/:slug" element={<PublicPartner />} />
       <Route path="/admin" element={<RequireRole role="admin"><Layout role="admin" /></RequireRole>}>
+        <Route index element={<Navigate to="parceiros" replace />} />
         <Route path="parceiros" element={<Partners />} />
         <Route path="planos-midora" element={<MidoraPlans />} />
         <Route path="institucionais" element={<Institutional />} />
       </Route>
       <Route path="/parceiro" element={<RequireRole role="partner_user"><Layout role="partner_user" /></RequireRole>}>
+        <Route index element={<Navigate to="campanhas" replace />} />
         <Route path="campanhas" element={<CampaignList base="/parceiro" />} />
         <Route path="campanhas/nova" element={<CampaignForm base="/parceiro" />} />
         <Route path="campanhas/:id" element={<CampaignDetail base="/parceiro" />} />
@@ -35,6 +37,7 @@ export function AppRoutes() {
         <Route path="tv" element={<TvAccount />} />
       </Route>
       <Route path="/anunciante" element={<RequireRole role="advertiser"><Layout role="advertiser" /></RequireRole>}>
+        <Route index element={<Navigate to="campanhas" replace />} />
         <Route path="campanhas" element={<CampaignList base="/anunciante" />} />
         <Route path="campanhas/nova" element={<CampaignForm base="/anunciante" />} />
         <Route path="campanhas/:id" element={<CampaignDetail base="/anunciante" />} />
