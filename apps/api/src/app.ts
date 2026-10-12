@@ -1,10 +1,15 @@
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import { registerAuth } from './auth/plugin';
+import { catalogRoutes } from './catalog/routes';
 import type { Db } from './db/client';
 import { healthRoutes } from './health';
+import { registerCsrfGuard } from './http/csrf';
+import type { UploadLimits } from './media/upload';
 import { adminPartnerRoutes } from './partners/admin-routes';
 import { partnerRoutes } from './partners/partner-routes';
+import { publicRoutes } from './public/routes';
 import { registerStatic } from './static';
+import type { LocalStorage } from './storage/local';
 
 export interface AppOptions {
   version: string;
@@ -13,6 +18,8 @@ export interface AppOptions {
   playerDir?: string;
   db?: Db;
   cookieSecure?: boolean;
+  storage?: LocalStorage;
+  uploadLimits?: UploadLimits;
 }
 
 export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
@@ -28,9 +35,12 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   });
   await app.register(healthRoutes, { version: opts.version, db: opts.db });
   if (opts.db) {
+    registerCsrfGuard(app);
     await registerAuth(app, { db: opts.db, cookieSecure: opts.cookieSecure ?? false });
     await app.register(adminPartnerRoutes, { db: opts.db });
     await app.register(partnerRoutes, { db: opts.db });
+    await app.register(catalogRoutes, { db: opts.db });
+    await app.register(publicRoutes, { db: opts.db, cookieSecure: opts.cookieSecure ?? false });
   }
   await registerStatic(app, { webDir: opts.webDir, playerDir: opts.playerDir });
   return app;
