@@ -3,7 +3,8 @@ import { isTvSession } from '../src/session';
 
 afterEach(() => vi.unstubAllGlobals());
 const respond = (status: number, body: unknown) =>
-  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(body), { status })));
+  vi.stubGlobal('fetch', vi.fn(async (url: string) =>
+    url === '/api/player/me' ? new Response(JSON.stringify(body), { status }) : new Response('{}', { status: 404 })));
 
 describe('isTvSession', () => {
   it('only sends the TV to login on 401/403 or a non-TV account', async () => {

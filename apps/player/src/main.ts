@@ -22,7 +22,7 @@ async function start() {
   mountControls(root, {
     setMuted: (m) => screen.setMuted(m),
     logout: async () => {
-      await api('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
+      await api('/api/player/logout', { method: 'POST' }).catch(() => undefined);
       location.reload();
     },
   });

@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { campaigns, sessions } from '../src/db/schema';
 import { createTestApp, multipart, seed } from './helpers/app';
-import { login } from './helpers/fixtures';
+import { loginTv } from './helpers/fixtures';
 import { PNG_BYTES } from './helpers/mp4';
 
 let t: Awaited<ReturnType<typeof createTestApp>>;
@@ -35,7 +35,7 @@ beforeAll(async () => {
   approvedMedia = (await campaignWithImage('Aprovada', true)).media;
   draftMedia = (await campaignWithImage('Rascunho', false)).media;
   await req('PUT', '/api/partner/player-account', s.gerenteA, { password: 'senha-tv-123' });
-  tv = await login(t.app, 'tv@parceiro-a', 'senha-tv-123');
+  tv = await loginTv(t.app, 'tv@parceiro-a', 'senha-tv-123');
 });
 afterAll(() => t.close());
 
@@ -46,7 +46,7 @@ describe('partner transition settings', () => {
     expect(res.json().partner).toMatchObject({ transition: 'slide', transitionMs: 1000 });
     expect((await req('PATCH', '/api/partner/settings', s.gerenteA, { transitionMs: 5000 })).statusCode).toBe(400);
     expect((await req('PATCH', '/api/partner/settings', s.gerenteA, { transition: 'zoom' })).statusCode).toBe(400);
-    expect((await req('PATCH', '/api/partner/settings', tv, { transition: 'cut' })).statusCode).toBe(403);
+    expect((await req('PATCH', '/api/partner/settings', tv, { transition: 'cut' })).statusCode).toBe(401); // TV cookie is not a panel session
   });
 });
 
@@ -61,7 +61,7 @@ describe('player manifest', () => {
   });
 
   it('is only for TV accounts', async () => {
-    expect((await req('GET', '/api/player/manifest', s.gerenteA)).statusCode).toBe(403);
+    expect((await req('GET', '/api/player/manifest', s.gerenteA)).statusCode).toBe(401); // panel cookie is not a TV session
     expect((await req('GET', '/api/player/manifest')).statusCode).toBe(401);
   });
 
@@ -69,7 +69,7 @@ describe('player manifest', () => {
     const soon = new Date(Date.now() + 10 * 86_400_000);
     await t.db.update(sessions).set({ expiresAt: soon });
     const res = await req('GET', '/api/player/manifest', tv);
-    expect(res.cookies.find((c) => c.name === 'midora_session')).toBeTruthy();
+    expect(res.cookies.find((c) => c.name === 'midora_tv')).toBeTruthy();
     const rows = await t.db.select({ e: sessions.expiresAt }).from(sessions);
     expect(rows.some((r) => r.e.getTime() > Date.now() + 300 * 86_400_000)).toBe(true);
   });

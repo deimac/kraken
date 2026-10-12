@@ -23,17 +23,14 @@ export function renderLogin(root: HTMLElement): Promise<void> {
       const email = (form.elements.namedItem('user') as HTMLInputElement).value;
       const password = (form.elements.namedItem('password') as HTMLInputElement).value;
       try {
-        const r = await api<{ user: { role: string } }>('/api/auth/login', { method: 'POST', body: { email, password } });
-        if (r.user.role !== 'player') {
-          await api('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
-          error.textContent = 'Use a conta da TV (tv@seu-estabelecimento), criada em Conta da TV no painel.';
-          return;
-        }
+        await api('/api/player/login', { method: 'POST', body: { email, password } });
         resolve();
       } catch (err) {
         error.textContent =
           err instanceof ApiError && err.status === 401
             ? 'Usuário ou senha incorretos.'
+            : err instanceof ApiError && err.code === 'not_tv_account'
+              ? 'Use a conta da TV (tv@seu-estabelecimento), criada em Conta da TV no painel.'
             : err instanceof ApiError && err.status === 429
               ? 'Muitas tentativas. Aguarde um pouco.'
               : 'Sem conexão. Tente de novo.';

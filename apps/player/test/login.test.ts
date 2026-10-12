@@ -24,15 +24,16 @@ describe('TV login', () => {
   it('shows errors for wrong credentials and non-TV accounts', async () => {
     const responses = [
       new Response(JSON.stringify({ error: 'invalid_credentials' }), { status: 401 }),
-      new Response(JSON.stringify({ user: { role: 'partner_user' } }), { status: 200 }),
-      new Response(null, { status: 204 }),
+      new Response(JSON.stringify({ error: 'not_tv_account' }), { status: 403 }),
     ];
-    vi.stubGlobal('fetch', vi.fn(async () => responses.shift()!));
+    const fetchMock = vi.fn(async (url: string) => (url ? responses.shift()! : responses.shift()!));
+    vi.stubGlobal('fetch', fetchMock);
     const root = document.body.appendChild(document.createElement('div'));
     void renderLogin(root);
     fill('tv@x', 'errada');
     await vi.waitFor(() => expect(root.textContent).toContain('Usuário ou senha incorretos.'));
     fill('g@a.com', 'senha-forte-1');
     await vi.waitFor(() => expect(root.textContent).toContain('Use a conta da TV'));
+    expect(fetchMock.mock.calls.every(([url]) => url === '/api/player/login')).toBe(true);
   });
 });
