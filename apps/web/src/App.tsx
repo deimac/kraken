@@ -11,6 +11,7 @@ import { Login } from './pages/Login';
 import { Advertisers } from './pages/partner/Advertisers';
 import { Plans } from './pages/partner/Plans';
 import { TvAccount } from './pages/partner/TvAccount';
+import { PublicPartner } from './pages/public/PublicPartner';
 import { Layout } from './ui';
 
 export function AppRoutes() {
@@ -19,6 +20,7 @@ export function AppRoutes() {
       <Route path="/" element={<Home />} />
       <Route path="/entrar" element={<Login />} />
       <Route path="/tv" element={<TvNotice />} />
+      <Route path="/p/:slug" element={<PublicPartner />} />
       <Route path="/admin" element={<RequireRole role="admin"><Layout role="admin" /></RequireRole>}>
         <Route path="parceiros" element={<Partners />} />
         <Route path="planos-midora" element={<MidoraPlans />} />
