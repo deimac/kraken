@@ -39,3 +39,16 @@ export async function loginTv(app: FastifyInstance, email: string, password: str
   const c = res.cookies.find((x) => x.name === 'kraken_tv');
   return `kraken_tv=${c!.value}`;
 }
+
+let cnpjSeq = 0;
+/** A fresh valid CNPJ body for advertiser payloads (unique per call). */
+export function pj(): { personType: 'pj'; document: string } {
+  const base = String(10000000 + ++cnpjSeq).padStart(8, '0') + '0001';
+  const dv = (d: string, w: number[]) => {
+    const r = w.reduce((s, x, i) => s + Number(d[i]) * x, 0) % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  const d1 = dv(base, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const d2 = dv(base + d1, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return { personType: 'pj', document: `${base}${d1}${d2}` };
+}

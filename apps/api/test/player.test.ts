@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { campaigns, sessions } from '../src/db/schema';
 import { createTestApp, multipart, seed } from './helpers/app';
-import { loginTv } from './helpers/fixtures';
+import { loginTv, pj } from './helpers/fixtures';
 import { PNG_BYTES } from './helpers/mp4';
 
 let t: Awaited<ReturnType<typeof createTestApp>>;
@@ -16,7 +16,7 @@ const req = (method: 'GET' | 'POST' | 'PATCH' | 'PUT', url: string, cookie?: str
 
 async function campaignWithImage(name: string, approve: boolean) {
   const plan = (await req('POST', '/api/partner/plans', s.gerenteA, { name: `P ${name}`, frequencyLevel: 'high' })).json().plan.id;
-  const adv = (await req('POST', '/api/partner/advertisers', s.gerenteA, { name: `A ${name}` })).json().advertiser.id;
+  const adv = (await req('POST', '/api/partner/advertisers', s.gerenteA, { name: `A ${name}`, ...pj() })).json().advertiser.id;
   const id = (await req('POST', '/api/campaigns', s.gerenteA, {
     advertiserId: adv, planId: plan, name, startsAt: '2026-01-01T00:00:00Z', endsAt: '2030-01-01T00:00:00Z',
   })).json().campaign.id;

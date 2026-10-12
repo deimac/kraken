@@ -1,3 +1,4 @@
+import { pj } from './helpers/fixtures';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp, multipart, seed } from './helpers/app';
 import { PNG_BYTES } from './helpers/mp4';
@@ -8,7 +9,7 @@ async function setup(opts: Parameters<typeof createTestApp>[0]) {
   const req = (url: string, payload: unknown) =>
     t.app.inject({ method: 'POST', url, headers: { cookie: s.gerenteA }, payload: payload as object });
   const plan = (await req('/api/partner/plans', { name: 'P', frequencyLevel: 'low' })).json().plan.id;
-  const adv = (await req('/api/partner/advertisers', { name: 'A' })).json().advertiser.id;
+  const adv = (await req('/api/partner/advertisers', { name: 'A', ...pj() })).json().advertiser.id;
   const id = (await req('/api/campaigns', {
     advertiserId: adv, planId: plan, name: 'C', startsAt: '2026-01-01T00:00:00Z', endsAt: '2030-01-01T00:00:00Z',
   })).json().campaign.id;

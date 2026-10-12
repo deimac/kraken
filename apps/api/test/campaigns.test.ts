@@ -1,3 +1,4 @@
+import { pj } from './helpers/fixtures';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { effectiveStatus } from '../src/campaigns/status';
@@ -30,7 +31,7 @@ beforeAll(async () => {
   s = await seed(t.app, t.db);
   planA = (await req('POST', '/api/partner/plans', s.gerenteA, { name: 'Ouro', frequencyLevel: 'high' })).json().plan.id;
   planB = (await req('POST', '/api/partner/plans', s.gerenteB, { name: 'B', frequencyLevel: 'low' })).json().plan.id;
-  advA = (await req('POST', '/api/partner/advertisers', s.gerenteA, { name: 'Manual A' })).json().advertiser.id;
+  advA = (await req('POST', '/api/partner/advertisers', s.gerenteA, { name: 'Manual A', ...pj() })).json().advertiser.id;
   advCookie = await signup('anunc@x.com');
   advOtherCookie = await signup('outro@x.com');
 });

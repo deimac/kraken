@@ -53,6 +53,8 @@ export const partners = pgTable(
   ],
 );
 
+export const PERSON_TYPES = ['pf', 'pj'] as const;
+
 export const advertisers = pgTable(
   'advertisers',
   {
@@ -63,11 +65,26 @@ export const advertisers = pgTable(
     email: text('email'),
     phone: text('phone'),
     source: text('source', { enum: ['manual', 'self_signup'] }).notNull(),
+    personType: text('person_type', { enum: PERSON_TYPES }).notNull().default('pj'),
+    document: text('document'), // CPF (pf) or CNPJ (pj), digits only; null only for legacy rows
+    legalName: text('legal_name'),
+    whatsapp: text('whatsapp'),
+    notes: text('notes'),
+    zip: text('zip'),
+    street: text('street'),
+    number: text('number'),
+    complement: text('complement'),
+    district: text('district'),
+    city: text('city'),
+    state: text('state'),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
     ...timestamps,
   },
   (t) => [
     check('advertisers_source_check', sql`${t.source} in ('manual', 'self_signup')`),
+    check('advertisers_person_type_check', sql`${t.personType} in ('pf', 'pj')`),
     index('advertisers_partner_idx').on(t.partnerId),
+    uniqueIndex('advertisers_partner_document_uq').on(t.partnerId, t.document).where(sql`${t.document} is not null`),
   ],
 );
 

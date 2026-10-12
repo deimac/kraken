@@ -1,6 +1,6 @@
-import { and, asc, eq, gt, lte, or } from 'drizzle-orm';
+import { and, asc, eq, gt, isNull, lte, or } from 'drizzle-orm';
 import type { Db } from '../db/client';
-import { campaigns, media, partners, type FrequencyLevel } from '../db/schema';
+import { advertisers, campaigns, media, partners, type FrequencyLevel } from '../db/schema';
 
 export interface EligibleItem {
   campaignId: string;
@@ -36,7 +36,8 @@ export async function listEligible(db: Db, partnerId: string, now: Date = new Da
     })
     .from(campaigns)
     .innerJoin(media, eq(media.id, campaigns.currentMediaId))
-    .where(and(owner, eq(campaigns.status, 'approved'), lte(campaigns.startsAt, now), gt(campaigns.endsAt, now)))
+    .leftJoin(advertisers, eq(advertisers.id, campaigns.advertiserId))
+    .where(and(owner, isNull(advertisers.archivedAt), eq(campaigns.status, 'approved'), lte(campaigns.startsAt, now), gt(campaigns.endsAt, now)))
     .orderBy(asc(campaigns.createdAt), asc(campaigns.id));
   return rows.map((r) => ({
     campaignId: r.campaignId, kind: r.kind, name: r.name, frequencyLevel: r.frequencyLevel,

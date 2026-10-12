@@ -2,7 +2,7 @@ import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp, multipart, seed } from './helpers/app';
-import { login } from './helpers/fixtures';
+import { login, pj } from './helpers/fixtures';
 import { PNG_BYTES, buildMp4 } from './helpers/mp4';
 
 let t: Awaited<ReturnType<typeof createTestApp>>;
@@ -23,7 +23,7 @@ beforeAll(async () => {
   t = await createTestApp({ maxImageBytes: 1024, maxVideoBytes: 64 * 1024 });
   s = await seed(t.app, t.db);
   const plan = (await req('POST', '/api/partner/plans', s.gerenteA, { name: 'P', frequencyLevel: 'medium' })).json().plan.id;
-  const adv = (await req('POST', '/api/partner/advertisers', s.gerenteA, { name: 'A' })).json().advertiser.id;
+  const adv = (await req('POST', '/api/partner/advertisers', s.gerenteA, { name: 'A', ...pj() })).json().advertiser.id;
   campaignId = (await req('POST', '/api/campaigns', s.gerenteA, {
     advertiserId: adv, planId: plan, name: 'Mídia', startsAt: '2026-01-01T00:00:00Z', endsAt: '2030-01-01T00:00:00Z',
   })).json().campaign.id;

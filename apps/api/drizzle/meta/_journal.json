@@ -43,6 +43,13 @@
       "when": 1791846144925,
       "tag": "0005_kraken_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791847951479,
+      "tag": "0006_advertisers_details",
+      "breakpoints": true
     }
   ]
 }

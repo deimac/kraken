@@ -71,4 +71,12 @@ describe('listEligible', () => {
     await db.update(partners).set({ status: 'inactive' }).where(eq(partners.id, pB));
     expect(await listEligible(db, pB, now)).toEqual([]);
   });
+
+  it('skips campaigns of archived advertisers', async () => {
+    const pC = (await createPartner(db, 'c')).id;
+    const c = await makeCampaign({ partnerId: pC, status: 'approved', name: 'archived-adv' });
+    expect((await listEligible(db, pC, now)).map((i) => i.name)).toEqual(['archived-adv']);
+    await db.update(advertisers).set({ archivedAt: now }).where(eq(advertisers.id, c.advertiserId!));
+    expect(await listEligible(db, pC, now)).toEqual([]);
+  });
 });
