@@ -25,17 +25,25 @@ O Host do healthcheck deve ser `127.0.0.1`, não `localhost`: dentro do contêin
 
 Merge/push na `main` dispara build e deploy automáticos. O CI (`.github/workflows/ci.yml`: lint, typecheck, testes, build e smoke test da imagem) deve estar verde antes do merge.
 
+## Banco de dados
+
+- Postgres 18 `midora-db` (`7lymsttm2meffka7lits7sqs`) no projeto `midora`, sem acesso público, limite 512 MB.
+- Migrações (`apps/api/drizzle/`) são aplicadas automaticamente no start da aplicação.
+
 ## Variáveis de ambiente
 
 | Variável | Valor | Observação |
 |---|---|---|
-| `PORT` | 3000 | definido na imagem |
-| `HOST` | `0.0.0.0` | definido na imagem |
+| `PORT` / `HOST` | 3000 / `0.0.0.0` | definidos na imagem |
 | `WEB_DIR` / `PLAYER_DIR` | `/app/web` / `/app/player` | definidos na imagem |
+| `DATABASE_URL` | URL **interna** do `midora-db` | segredo; só runtime (desmarcar "Build Variable") |
+| `COOKIE_SECURE` | `false` | cookies são `Secure` por padrão; `false` só enquanto não houver HTTPS |
+| `ADMIN_EMAIL` | e-mail do admin | usado só se o admin ainda não existir |
+| `ADMIN_PASSWORD` | 12+ caracteres | cria o admin se ele não existir; nunca altera a senha de um admin existente; recomendado remover depois (fica em texto puro no Coolify); com `$`, marcar "Is Literal?" |
 | `LOG_LEVEL` | `info` | opcional |
-| `APP_VERSION` | — | opcional; senão usa `SOURCE_COMMIT` (injetado pelo Coolify) ou `dev` |
+| `APP_VERSION` | — | opcional; senão `SOURCE_COMMIT` (injetado pelo Coolify) ou `dev` |
 
-Segredos (a partir da Etapa 1: `DATABASE_URL`, `SESSION_SECRET`) existem somente no Coolify, nunca no repositório.
+Variáveis novas no Coolify vêm marcadas como "Build Variable"; desmarque nas que contêm segredos.
 
 ## Verificar
 
@@ -49,4 +57,11 @@ Coolify → midora → Deployments → escolher o deploy anterior → **Redeploy
 
 ## Backups e recuperação
 
-Etapa 0 não tem dados. Banco (Etapa 1) e mídia (Etapa 2) terão backup diário; o procedimento de restauração será adicionado aqui e testado antes do piloto.
+- `midora-db`: backup diário às 03:00 (Brasília, cron `0 6 * * *`), 7 cópias, armazenadas na VPS. Destino externo: pendente.
+- Restaurar: Coolify → `midora-db` → Backups → escolher o backup → **Restore**; depois Redeploy da aplicação.
+- Mídia (Etapa 2): procedimento será adicionado.
+
+## Problemas conhecidos
+
+- Deploy falha com `ADMIN_PASSWORD must have at least 12 characters`: senha curta (ou `$` interpretado pelo Coolify). O Coolify mantém a versão anterior no ar.
+- Deploy falha com `DATABASE_URL is required`: variável ausente ou com nome errado.
