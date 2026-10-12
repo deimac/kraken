@@ -34,7 +34,7 @@ export function Layout({ role }: { role: Exclude<Role, 'player'> }) {
   return (
     <div className="shell">
       <nav className="side" aria-label="Menu principal">
-        <div className="brand"><span className="brand-mark" aria-hidden="true" />Midora</div>
+        <div className="brand"><img className="brand-mark" src="/kraken-symbol.png" alt="" />Kraken Ads</div>
         {NAV[role].map((item) => (
           <NavLink key={item.to} to={item.to} className="nav-link">
             {item.icon}

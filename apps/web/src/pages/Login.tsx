@@ -40,6 +40,11 @@ export function Login() {
   return (
     <div className="center-page">
       <div className="card auth-card">
+        <div className="auth-brand">
+          <img src="/kraken-symbol.png" alt="" />
+          <strong>KRAKEN ADS</strong>
+          <span>Smart media network</span>
+        </div>
         <div className="page-header">
           <h1>Entrar</h1>
           <ThemeToggle />

@@ -3,8 +3,8 @@ import { ApiError, api } from './api';
 export function renderLogin(root: HTMLElement): Promise<void> {
   root.innerHTML = `
     <div class="login">
-      <div class="brand-mark" aria-hidden="true"></div>
-      <h1>Midora</h1>
+      <img class="brand-mark" src="/player/kraken-symbol.png" alt="" />
+      <h1>Kraken Ads</h1>
       <form>
         <label>Usuário<input name="user" autocomplete="username" required /></label>
         <label>Senha<input name="password" type="password" autocomplete="current-password" required /></label>

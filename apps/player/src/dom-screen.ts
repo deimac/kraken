@@ -31,7 +31,7 @@ export class DomScreen implements Screen {
     this.waiting = document.createElement('div');
     this.waiting.className = 'waiting hidden';
     this.waiting.innerHTML =
-      '<div class="brand-mark" aria-hidden="true"></div><h1>Midora</h1><p>Aguardando campanhas…</p>';
+      '<img class="brand-mark" src="/player/kraken-symbol.png" alt="" /><h1>Kraken Ads</h1><p>Aguardando campanhas…</p>';
     root.appendChild(this.waiting);
   }
 

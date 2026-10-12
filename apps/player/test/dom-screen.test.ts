@@ -25,7 +25,7 @@ describe('DomScreen', () => {
     const screen = new DomScreen(root);
     screen.setTransition('fade', 0);
     expect(root.querySelectorAll('video')).toHaveLength(2);
-    expect(root.querySelectorAll('img')).toHaveLength(2);
+    expect(root.querySelectorAll('.layer img')).toHaveLength(2);
 
     expect(await screen.preload(image('a'))).toBe(true);
     const first = screen.present(image('a'));
@@ -137,7 +137,7 @@ describe('DomScreen with video', () => {
     void ready.then(() => { settled = true; });
     await vi.advanceTimersByTimeAsync(0);
     expect(settled).toBe(false);
-    root.querySelectorAll('img')[0]!.dispatchEvent(new Event('load'));
+    root.querySelectorAll('.layer img')[0]!.dispatchEvent(new Event('load'));
     expect(await ready).toBe(true);
   });
 });

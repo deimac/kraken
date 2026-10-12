@@ -52,7 +52,11 @@ h2 { font-size: 16px; font-weight: 600; margin: 0 0 12px; }
 .shell { display: flex; min-height: 100vh; }
 .side { width: 220px; flex-shrink: 0; background: var(--side); color: var(--side-text); padding: 18px 12px; display: flex; flex-direction: column; gap: 2px; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--side-active-text); font-weight: 600; margin: 0 8px 20px; }
-.brand-mark { width: 26px; height: 26px; border-radius: 7px; background: var(--accent); }
+.brand-mark { width: 64px; height: auto; }
+.auth-brand { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 20px; text-align: center; }
+.auth-brand img { width: 220px; max-width: 100%; height: auto; }
+.auth-brand strong { font-size: 22px; letter-spacing: 0.04em; }
+.auth-brand span { color: var(--muted); font-size: 13px; }
 .nav-link { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; color: var(--side-text); text-decoration: none; }
 .nav-link:hover { background: var(--side-active); }
 .nav-link.active { background: var(--side-active); color: var(--side-active-text); }
