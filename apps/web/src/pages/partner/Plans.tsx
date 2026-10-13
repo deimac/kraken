@@ -1,6 +1,6 @@
 import { IconArchive, IconArchiveOff, IconEdit, IconPhoto, IconPlus, IconTags, IconVideo } from '@tabler/icons-react';
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { api } from '../../api';
+import { api, ApiError } from '../../api';
 import { FREQUENCY_LABEL, PERIOD_LABEL, centsToInput, formatPlanPrice, parseMoney, planLimits } from '../../format';
 import { errorMessage } from '../../messages';
 import type { FrequencyLevel, Plan } from '../../types';
@@ -22,6 +22,7 @@ const byName = (a: Plan, b: Plan) => a.name.localeCompare(b.name);
 export function Plans() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [tab, setTab] = useState<'active' | 'archived'>('active');
   const [editing, setEditing] = useState<Plan | 'new' | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY);
@@ -39,7 +40,8 @@ export function Plans() {
   function open(target: Plan | 'new') {
     setEditing(target);
     setForm(target === 'new' ? EMPTY : fromPlan(target));
-    setError(null);
+    if (target === 'new') setTab('active');
+    setFormError(null);
   }
 
   async function toggleArchive(p: Plan) {
@@ -54,9 +56,10 @@ export function Plans() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     const priceCents = parseMoney(form.price);
-    if (priceCents === undefined) return setError('Valor inválido. Use o formato 300,00.');
+    if (priceCents === undefined || (priceCents ?? 0) > 100_000_000) return setFormError('Valor inválido. Use o formato 300,00.');
+    if (Number(form.maxVideos) + Number(form.maxImages) <= 0) return setFormError(errorMessage(new ApiError(400, 'invalid_limits')));
     setBusy(true);
-    setError(null);
+    setFormError(null);
     const body: Record<string, unknown> = {
       name: form.name, frequencyLevel: form.frequencyLevel, maxVideos: Number(form.maxVideos), maxImages: Number(form.maxImages),
       maxVideoSeconds: Number(form.maxVideoSeconds), priceCents: priceCents ?? 0, periodMonths: Number(form.periodMonths),
@@ -72,7 +75,7 @@ export function Plans() {
       }
       setEditing(null);
     } catch (err) {
-      setError(errorMessage(err));
+      setFormError(errorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -137,6 +140,7 @@ export function Plans() {
       {editing && (
         <form ref={formRef} className="card form form-wide" onSubmit={submit} style={{ marginTop: 16 }}>
           <h2>{editing === 'new' ? 'Novo plano' : 'Editar plano'}</h2>
+          {formError && <Notice kind="error">{formError}</Notice>}
           <div className="form-row">
             <Field label="Nome do plano"><input value={form.name} onChange={set('name')} required /></Field>
             <Field label="Frequência">

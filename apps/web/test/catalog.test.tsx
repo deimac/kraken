@@ -144,6 +144,21 @@ describe('ad plans', () => {
     expect(await screen.findByText('Prata')).toBeTruthy();
   });
 
+  it('shows limit errors inside the form without calling the API', async () => {
+    const calls = mockApi({ 'GET /api/auth/me': { user: partnerUser }, 'GET /api/partner/plans': { plans: [] } });
+    renderAt('/parceiro/planos');
+    await userEvent.click(await screen.findByRole('button', { name: 'Novo plano' }));
+    await userEvent.type(screen.getByLabelText('Nome do plano'), 'Vazio');
+    await userEvent.clear(screen.getByLabelText('Vídeos'));
+    await userEvent.type(screen.getByLabelText('Vídeos'), '0');
+    await userEvent.clear(screen.getByLabelText('Imagens'));
+    await userEvent.type(screen.getByLabelText('Imagens'), '0');
+    await userEvent.click(screen.getByRole('button', { name: 'Criar plano' }));
+    const form = screen.getByRole('button', { name: 'Criar plano' }).closest('form')!;
+    expect(within(form).getByText('O plano precisa permitir ao menos um vídeo ou uma imagem.')).toBeTruthy();
+    expect(calls.some((c) => c.method === 'POST')).toBe(false);
+  });
+
   it('edits a plan with PATCH', async () => {
     const calls = mockApi({
       'GET /api/auth/me': { user: partnerUser },
