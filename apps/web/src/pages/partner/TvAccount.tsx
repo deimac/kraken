@@ -8,6 +8,7 @@ interface PartnerTv {
   slug: string;
   transition: Transition;
   transitionMs: number;
+  tvCodeSet?: boolean;
 }
 
 export function TvAccount() {
@@ -17,6 +18,8 @@ export function TvAccount() {
   const [transitionMs, setTransitionMs] = useState(600);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [codeSet, setCodeSet] = useState(false);
+  const [code, setCode] = useState<{ code: string; link: string } | null>(null);
 
   useEffect(() => {
     api<{ partner: PartnerTv }>('/api/partner')
@@ -24,6 +27,7 @@ export function TvAccount() {
         setLogin(`tv@${r.partner.slug}`);
         setTransition(r.partner.transition);
         setTransitionMs(r.partner.transitionMs);
+        setCodeSet(Boolean(r.partner.tvCodeSet));
       })
       .catch((e) => setMsg({ kind: 'error', text: errorMessage(e) }));
   }, []);
@@ -43,6 +47,22 @@ export function TvAccount() {
     }
   }
 
+  async function generateCode() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await api<{ code: string; path: string }>('/api/partner/player-code', { method: 'POST' });
+      setCode({ code: r.code, link: `${window.location.origin}${r.path}` });
+      setCodeSet(true);
+    } catch (err) {
+      setMsg({ kind: 'error', text: errorMessage(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const copy = (text: string) => navigator.clipboard?.writeText(text).then(() => setMsg({ kind: 'ok', text: 'Copiado.' }));
+
   async function saveTransition(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -61,7 +81,30 @@ export function TvAccount() {
       <PageHeader title="Conta da TV" />
       {msg && <Notice kind={msg.kind}>{msg.text}</Notice>}
       <div className="card">
-        <p>Na TV, abra o navegador no endereço do Kraken Ads seguido de <strong>/player</strong> e entre com:</p>
+        <h2>Conectar uma TV</h2>
+        <p>
+          Na TV, abra o navegador no link de acesso — ou abra <strong>{window.location.origin}/player</strong> e digite o código.
+          Não é preciso usuário nem senha.
+        </p>
+        {code ? (
+          <div className="tv-code">
+            <div className="tv-code-value">{code.code}</div>
+            <div className="tv-code-link">
+              <code>{code.link}</code>
+              <button className="btn" type="button" onClick={() => copy(code.link)}>Copiar link</button>
+              <button className="btn" type="button" onClick={() => copy(code.code)}>Copiar código</button>
+            </div>
+            <p className="muted">Anote agora: por segurança o código não é mostrado de novo. TVs já conectadas continuam funcionando.</p>
+          </div>
+        ) : (
+          codeSet && <p className="muted">Já existe um código de acesso. Gere um novo se precisar conectar outra TV ou se ele foi perdido.</p>
+        )}
+        <button className="btn btn-primary" type="button" disabled={busy} onClick={generateCode}>
+          {codeSet ? 'Gerar novo código' : 'Gerar código de acesso'}
+        </button>
+      </div>
+      <details className="card">
+        <summary>Entrar com usuário e senha (opcional)</summary>
         <p>Usuário: <strong>{login ?? '…'}</strong></p>
         <p className="muted">Trocar a senha desconecta todas as TVs deste estabelecimento.</p>
         <form className="form" onSubmit={save}>
@@ -70,7 +113,7 @@ export function TvAccount() {
           </Field>
           <div><button className="btn btn-primary" type="submit" disabled={busy}>Definir senha</button></div>
         </form>
-      </div>
+      </details>
       <div className="card">
         <h2>Transições</h2>
         <form className="form" onSubmit={saveTransition}>

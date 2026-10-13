@@ -1,7 +1,7 @@
 # Teste do player na Fire TV Stick 4K
 
 1. Na Fire TV, abra o navegador **Silk** (ou outro de sua preferência).
-2. Acesse `http://<domínio do Kraken Ads>/player/` e entre com `tv@<seu-parceiro>` e a senha definida em **Conta da TV** no painel.
+2. No painel, em **Conta da TV**, clique em **Gerar código de acesso**. Na TV, abra o link mostrado (`http://<domínio do Kraken Ads>/player/#CÓDIGO`) ou abra `http://<domínio do Kraken Ads>/player/` e digite o código. Não há usuário nem senha. (O acesso por `tv@<seu-parceiro>` + senha continua disponível em "Entrar com usuário e senha".)
 3. Aperte qualquer botão do controle: aparecem **Ativar som**, **Tela cheia** e **Sair**. Ative som e tela cheia.
 4. Deixe tocando por pelo menos 2 horas e observe:
    - os anúncios passam sem tela preta entre eles;

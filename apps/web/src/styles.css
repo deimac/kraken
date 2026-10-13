@@ -194,3 +194,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .tv-status.tv-on svg { color: var(--accent); }
 .tv-status.tv-off { border-left-color: var(--danger); }
 .tv-status.tv-off svg { color: var(--danger); }
+.tv-code { margin: 8px 0 12px; }
+.tv-code-value { font: 600 28px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 8px; }
+.tv-code-link { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tv-code-link code { background: var(--soft); padding: 6px 8px; border-radius: 6px; overflow-wrap: anywhere; }
+details.card summary { cursor: pointer; font-weight: 600; }

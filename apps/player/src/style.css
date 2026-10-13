@@ -22,6 +22,8 @@ h1 { font-size: 40px; font-weight: 600; margin: 0; }
 .login input { font: inherit; padding: 12px 14px; border-radius: 10px; border: 2px solid #332d26; background: #211d18; color: #f2ede6; }
 .login input:focus, .login button:focus, .overlay button:focus { outline: 3px solid #2bb37f; outline-offset: 2px; }
 .login button, .overlay button { font: inherit; font-size: 20px; padding: 12px 22px; border: 0; border-radius: 10px; background: #2bb37f; color: #08140f; cursor: pointer; }
+.login .hint { color: #9b9288; font-size: 16px; margin: 0; }
+.login input[name=code] { text-transform: uppercase; letter-spacing: 0.08em; }
 .login .error { color: #f0a58a; min-height: 1.4em; margin: 0; }
 .overlay { position: fixed; left: 32px; bottom: 32px; display: flex; gap: 12px; z-index: 10; }
 .overlay button { background: #2a251f; color: #f2ede6; }

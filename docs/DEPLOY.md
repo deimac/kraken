@@ -62,7 +62,7 @@ Variáveis novas no Coolify vêm marcadas como "Build Variable"; desmarque nas q
 
 ## Player
 
-- Endereço na TV: `/player/`; login com a conta `tv@<slug>` criada pelo parceiro em **Conta da TV**.
+- Endereço na TV: `/player/`; a TV entra com o **código de acesso** gerado pelo parceiro em **Conta da TV** (link `/player/#CÓDIGO`, sem usuário nem senha; só o hash do código fica no banco, migração `0011_tv_code`). Gerar um novo código invalida o anterior, mas não desconecta as TVs já conectadas.
 - A TV busca a lista de anúncios a cada 5 minutos (`/api/player/manifest`) e renova a própria sessão automaticamente.
 - Guia de teste no aparelho: `docs/FIRE-TV.md`.
 - Inserções: a TV registra cada anúncio exibido até o fim e envia em lotes a cada 30 s (`POST /api/player/plays`); reenvios não duplicam. Eventos pendentes ficam guardados no navegador da TV até serem aceitos.

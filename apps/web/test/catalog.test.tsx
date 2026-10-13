@@ -194,6 +194,20 @@ describe('TV account', () => {
     expect(await screen.findByText(/TVs conectadas foram desconectadas/)).toBeTruthy();
   });
 
+  it('generates a TV access code and link, no user or password needed', async () => {
+    const calls = mockApi({
+      'GET /api/auth/me': { user: partnerUser },
+      'GET /api/partner': { partner: { id: 'p1', name: 'Ironberg', slug: 'ironberg', transition: 'fade', transitionMs: 600, tvCodeSet: false } },
+      'POST /api/partner/player-code': { code: 'K7QM-2XHB-9TRA-WD4N', path: '/player/#K7QM-2XHB-9TRA-WD4N' },
+    });
+    renderAt('/parceiro/tv');
+    await userEvent.click(await screen.findByRole('button', { name: 'Gerar código de acesso' }));
+    expect(calls.some((c) => c.method === 'POST' && c.path === '/api/partner/player-code')).toBe(true);
+    expect(await screen.findByText('K7QM-2XHB-9TRA-WD4N')).toBeTruthy();
+    expect(screen.getByText(`${window.location.origin}/player/#K7QM-2XHB-9TRA-WD4N`)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Gerar novo código' })).toBeTruthy();
+  });
+
   it('lets the partner choose the transition', async () => {
     const calls = mockApi({
       'GET /api/auth/me': { user: partnerUser },
