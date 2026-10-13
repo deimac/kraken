@@ -30,7 +30,7 @@ export const reportRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db }) 
   const load = async (req: FastifyRequest, reply: FastifyReply) => {
     const range = parse(Range, req.query, reply);
     if (!range) return null;
-    return { range, campaigns: await playsReport(db, scopeFor(req), range) };
+    return { range, ...(await playsReport(db, scopeFor(req), range)) };
   };
 
   app.get('/api/reports/plays', guard, async (req, reply) => {
@@ -42,12 +42,10 @@ export const reportRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db }) 
   app.get('/api/reports/plays.csv', guard, async (req, reply) => {
     const r = await load(req, reply);
     if (!r) return reply;
-    const lines = ['campanha;anunciante;tipo;dia;insercoes'];
-    for (const c of r.campaigns) {
-      const kind = c.kind === 'institutional' ? 'institucional' : 'comercial';
-      for (const d of c.days) {
-        lines.push([c.name, c.advertiserName ?? 'Kraken Ads', kind, d.day, String(d.count)].map(csvCell).join(';'));
-      }
+    const lines = ['assinatura;anunciante;tipo;peca;dia;insercoes'];
+    for (const l of r.lines) {
+      const kind = l.kind === 'institutional' ? 'institucional' : 'comercial';
+      lines.push([l.name, l.advertiserName ?? 'Kraken Ads', kind, l.piece, l.day, String(l.count)].map(csvCell).join(';'));
     }
     reply
       .header('content-type', 'text/csv; charset=utf-8')

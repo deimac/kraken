@@ -18,6 +18,7 @@ async function campaign(partnerId: string | null, name: string, advertiserId: st
   }).returning();
   const [m] = await t.db.insert(media).values({
     partnerId, campaignId: c!.id, storageKey: `k/${c!.id}`, mediaType: 'image', mime: 'image/png', sizeBytes: 1, sha256: 's', displaySeconds: 10,
+    originalName: 'peca.png',
   }).returning();
   return { id: c!.id, media: m!.id };
 }
@@ -48,6 +49,11 @@ beforeAll(async () => {
   await record(b, s.partnerB.id, '2026-10-11T12:00:00Z', 7);
   await record(inst, s.partnerA.id, '2026-10-11T12:00:00Z', 5);
   await record(a, s.partnerA.id, '2026-09-01T12:00:00Z', 9); // outside the range
+  const [video] = await t.db.insert(media).values({
+    partnerId: s.partnerA.id, campaignId: a.id, storageKey: `k/${a.id}/v`, mediaType: 'video', mime: 'video/mp4', sizeBytes: 1,
+    sha256: 's', durationMs: 15000, originalName: 'jeep.mp4',
+  }).returning();
+  await record({ id: a.id, media: video!.id }, s.partnerA.id, '2026-10-12T13:00:00Z', 6);
   await createUser(t.db, { email: 'adv@a.com', password: 'senha-forte-1', role: 'advertiser', partnerId: s.partnerA.id, advertiserId: advA!.id });
   advCookie = await login(t.app, 'adv@a.com', 'senha-forte-1');
 });
@@ -60,17 +66,21 @@ describe('plays report', () => {
   it('groups by campaign and Brasília day', async () => {
     const body = (await req(`/api/reports/plays?${RANGE}`, s.gerenteA)).json();
     const a = body.campaigns.find((c: { name: string }) => c.name === 'Campanha A');
-    expect(a).toMatchObject({ total: 9, advertiserName: 'Loja A', kind: 'commercial' });
+    expect(a).toMatchObject({ total: 15, advertiserName: 'Loja A', kind: 'commercial' });
     expect(a.days).toEqual([
       { day: '2026-10-10', count: 5 },
-      { day: '2026-10-12', count: 4 },
+      { day: '2026-10-12', count: 10 },
+    ]);
+    expect(a.pieces).toEqual([
+      { mediaId: expect.any(String), label: 'jeep.mp4', mediaType: 'video', total: 6 },
+      { mediaId: expect.any(String), label: 'peca.png', mediaType: 'image', total: 9 },
     ]);
   });
 
   it('scopes partners to their screens (including institutional)', async () => {
     expect(names((await req(`/api/reports/plays?${RANGE}`, s.gerenteA)).json())).toEqual(['Campanha A', 'Campanha A2', 'Institucional']);
     expect(names((await req(`/api/reports/plays?${RANGE}`, s.gerenteB)).json())).toEqual(['Campanha B']);
-    expect((await req(`/api/reports/plays.csv?${RANGE}`, s.gerenteA)).body).toContain('Institucional;Kraken Ads;institucional;2026-10-11;5');
+    expect((await req(`/api/reports/plays.csv?${RANGE}`, s.gerenteA)).body).toContain('Institucional;Kraken Ads;institucional;peca.png;2026-10-11;5');
   });
 
   it('scopes advertisers to their own campaigns', async () => {
@@ -93,7 +103,7 @@ describe('plays report', () => {
     const evil = await campaign(s.partnerA.id, '=HYPERLINK("http://evil")', adv!.id);
     await record(evil, s.partnerA.id, '2026-10-11T12:00:00Z');
     const res = await req(`/api/reports/plays.csv?${RANGE}`, s.gerenteA);
-    expect(res.body).toContain(`"'=HYPERLINK(""http://evil"")";'@Loja;comercial;2026-10-11;1`);
+    expect(res.body).toContain(`"'=HYPERLINK(""http://evil"")";'@Loja;comercial;peca.png;2026-10-11;1`);
     expect(res.body).not.toMatch(/(^|;)[=@]/m);
   });
 
@@ -102,7 +112,8 @@ describe('plays report', () => {
     expect(res.headers['content-type']).toContain('text/csv');
     expect(res.headers['content-disposition']).toContain('insercoes-2026-10-10-a-2026-10-12.csv');
     const lines = res.body.replace(/^\uFEFF/, '').trim().split('\r\n');
-    expect(lines[0]).toBe('campanha;anunciante;tipo;dia;insercoes');
-    expect(lines).toContain('Campanha A;Loja A;comercial;2026-10-10;5');
+    expect(lines[0]).toBe('assinatura;anunciante;tipo;peca;dia;insercoes');
+    expect(lines).toContain('Campanha A;Loja A;comercial;peca.png;2026-10-10;5');
+    expect(lines).toContain('Campanha A;Loja A;comercial;jeep.mp4;2026-10-12;6');
   });
 });
