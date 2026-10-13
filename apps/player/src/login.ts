@@ -11,6 +11,15 @@ export function codeFromHash(hash: string): string | null {
   return code.replace(/[^A-Za-z0-9]/g, '').length >= 8 ? code : null;
 }
 
+/** Direct address /player/<slug>: the establishment whose TV this is. */
+export function slugFromPath(path: string): string | null {
+  const m = /^\/player\/([a-z0-9-]+)\/?$/i.exec(path);
+  return m ? m[1]!.toLowerCase() : null;
+}
+
+/** Signs the TV in by its address alone (only when the partner turned direct access on). */
+export const loginOpen = (slug: string) => api('/api/player/open-login', { method: 'POST', body: { slug } });
+
 /** Signs the TV in with its access code; resolves when accepted. */
 export const loginWithCode = (code: string) => api('/api/player/code-login', { method: 'POST', body: { code } });
 

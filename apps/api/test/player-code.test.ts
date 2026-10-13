@@ -83,4 +83,16 @@ describe('TV access code', () => {
     const list = await t.app.inject({ method: 'GET', url: '/api/admin/partners', headers: { cookie: s.admin } });
     expect(list.json().partners.every((p: Record<string, unknown>) => !('tvCodeHash' in p))).toBe(true);
   });
+
+  it('direct access: once the partner turns it on, the TV signs in with just the address', async () => {
+    const slugLogin = (slug: string, ip: string) => post('/api/player/open-login', { slug }, undefined, ip);
+    expect((await slugLogin('parceiro-b', '10.1.1.1')).json()).toEqual({ error: 'direct_access_off' });
+    const on = await t.app.inject({ method: 'PATCH', url: '/api/partner/settings', headers: { cookie: s.gerenteB }, payload: { playerOpen: true } });
+    expect(on.json().partner.playerOpen).toBe(true);
+    const res = await slugLogin('parceiro-b', '10.1.1.2');
+    expect(res.statusCode).toBe(200);
+    expect(res.json().user).toMatchObject({ role: 'player', partnerId: s.partnerB.id });
+    expect((await t.app.inject({ method: 'GET', url: '/api/player/manifest', headers: { cookie: tvCookie(res)! } })).statusCode).toBe(200);
+    expect((await slugLogin('nao-existe', '10.1.1.3')).json()).toEqual({ error: 'direct_access_off' });
+  });
 });

@@ -42,6 +42,8 @@ export const partners = pgTable(
     tvLastSeenAt: timestamp('tv_last_seen_at', { withTimezone: true }), // last manifest fetch by the partner's TV
     tvCodeHash: text('tv_code_hash').unique(), // sha256 of the TV access code (sign in without user/password)
     tvCodeExpiresAt: timestamp('tv_code_expires_at', { withTimezone: true }),
+    // Direct access: the TV signs in by opening /player/<slug>, no code. Convenient for tests; anyone with the address can join.
+    playerOpen: boolean('player_open').notNull().default(false),
     ...timestamps,
   },
   (t) => [

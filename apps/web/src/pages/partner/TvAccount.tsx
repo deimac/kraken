@@ -9,6 +9,7 @@ interface PartnerTv {
   transition: Transition;
   transitionMs: number;
   tvCodeSet?: boolean;
+  playerOpen?: boolean;
 }
 
 export function TvAccount() {
@@ -17,6 +18,8 @@ export function TvAccount() {
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [codeSet, setCodeSet] = useState(false);
+  const [slug, setSlug] = useState('');
+  const [open, setOpen] = useState(false);
   const [code, setCode] = useState<{ code: string; link: string; expiresAt: string } | null>(null);
   const [revoking, setRevoking] = useState(false);
   const closeRevoke = useCallback(() => setRevoking(false), []);
@@ -27,9 +30,24 @@ export function TvAccount() {
         setTransition(r.partner.transition);
         setTransitionMs(r.partner.transitionMs);
         setCodeSet(Boolean(r.partner.tvCodeSet));
+        setSlug(r.partner.slug);
+        setOpen(Boolean(r.partner.playerOpen));
       })
       .catch((e) => setMsg({ kind: 'error', text: errorMessage(e) }));
   }, []);
+
+  async function toggleOpen(next: boolean) {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await api<{ partner: PartnerTv }>('/api/partner/settings', { method: 'PATCH', body: { playerOpen: next } });
+      setOpen(Boolean(r.partner.playerOpen));
+    } catch (err) {
+      setMsg({ kind: 'error', text: errorMessage(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function generateCode() {
     setBusy(true);
@@ -80,7 +98,24 @@ export function TvAccount() {
       <PageHeader title="Conta da TV" />
       {msg && <Notice kind={msg.kind}>{msg.text}</Notice>}
       <div className="card">
-        <h2>Conectar uma TV</h2>
+        <h2>Acesso direto</h2>
+        <label className="check">
+          <input type="checkbox" checked={open} disabled={busy} onChange={(e) => toggleOpen(e.target.checked)} />
+          Acesso direto: a TV entra só abrindo o endereço, sem código
+        </label>
+        {open && slug && (
+          <div className="tv-code-link" style={{ marginTop: 8 }}>
+            <code>{`${window.location.origin}/player/${slug}`}</code>
+            <button className="btn" type="button" onClick={() => copy(`${window.location.origin}/player/${slug}`)}>Copiar endereço</button>
+          </div>
+        )}
+        <p className="muted">
+          Prático para testes e para digitar com o controle remoto. Enquanto estiver ligado, qualquer pessoa com o endereço pode
+          abrir o player deste estabelecimento; desligue quando terminar de configurar as TVs.
+        </p>
+      </div>
+      <div className="card">
+        <h2>Conectar uma TV com código</h2>
         <p>
           Na TV, abra o navegador no link de acesso — ou abra <strong>{window.location.origin}/player</strong> e digite o código.
           Não é preciso usuário nem senha.

@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto';
 import { and, asc, eq } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -8,6 +7,7 @@ import { deleteUserSessions } from '../auth/sessions';
 import type { Db } from '../db/client';
 import { partners, users } from '../db/schema';
 import { parse } from '../http/validation';
+import { ensurePlayerUser } from '../player/account';
 import { generateTvCode, hashTvCode } from '../player/code';
 import { visiblePartner } from './visible';
 
@@ -15,7 +15,7 @@ const CODE_TTL_MS = 24 * 3_600_000;
 
 const PlayerAccount = z.object({ password: z.string().min(8).max(200) }).strict();
 const Settings = z
-  .object({ transition: z.enum(['fade', 'slide', 'cut']), transitionMs: z.number().int().min(0).max(3000) })
+  .object({ transition: z.enum(['fade', 'slide', 'cut']), transitionMs: z.number().int().min(0).max(3000), playerOpen: z.boolean() })
   .partial()
   .strict();
 
@@ -37,14 +37,7 @@ export const partnerRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db })
     const code = generateTvCode();
     const expiresAt = new Date(Date.now() + CODE_TTL_MS);
     await db.transaction(async (tx) => {
-      const [player] = await tx.select({ id: users.id }).from(users).where(and(eq(users.partnerId, partnerId), eq(users.role, 'player')));
-      if (!player) {
-        const [p] = await tx.select({ slug: partners.slug }).from(partners).where(eq(partners.id, partnerId));
-        // Random password nobody knows: the TV signs in with the code; the partner can still set one later.
-        const passwordHash = await hashPassword(randomBytes(32).toString('base64url'));
-        // Two first-time generations at once must not fail on the unique login name.
-        await tx.insert(users).values({ email: `tv@${p!.slug}`, passwordHash, role: 'player', partnerId }).onConflictDoNothing();
-      }
+      await ensurePlayerUser(tx, partnerId);
       await tx
         .update(partners)
         .set({ tvCodeHash: hashTvCode(code), tvCodeExpiresAt: expiresAt, updatedAt: new Date() })

@@ -208,6 +208,18 @@ describe('TV account', () => {
     expect(screen.getByRole('button', { name: 'Gerar novo código' })).toBeTruthy();
   });
 
+  it('turns direct access on and shows the TV address', async () => {
+    const calls = mockApi({
+      'GET /api/auth/me': { user: partnerUser },
+      'GET /api/partner': { partner: { id: 'p1', name: 'Ironberg', slug: 'ironberg', transition: 'fade', transitionMs: 600, playerOpen: false } },
+      'PATCH /api/partner/settings': (b: unknown) => ({ partner: { id: 'p1', slug: 'ironberg', ...(b as object) } }),
+    });
+    renderAt('/parceiro/tv');
+    await userEvent.click(await screen.findByLabelText(/Acesso direto/));
+    expect(calls.find((c) => c.method === 'PATCH')!.body).toEqual({ playerOpen: true });
+    expect(await screen.findByText(`${window.location.origin}/player/ironberg`)).toBeTruthy();
+  });
+
   it('lets the partner choose the transition', async () => {
     const calls = mockApi({
       'GET /api/auth/me': { user: partnerUser },

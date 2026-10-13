@@ -1,0 +1,1 @@
+ALTER TABLE "partners" ADD COLUMN "player_open" boolean DEFAULT false NOT NULL;

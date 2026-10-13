@@ -1,7 +1,7 @@
-import { api } from './api';
+import { ApiError, api } from './api';
 import { mountControls } from './controls';
 import { DomScreen } from './dom-screen';
-import { codeError, codeFromHash, loginWithCode, renderLogin } from './login';
+import { codeError, codeFromHash, loginOpen, loginWithCode, renderLogin, slugFromPath } from './login';
 import { createManifestClient } from './manifest';
 import { runPlayer } from './player';
 import { createPlayQueue, playEvent } from './queue';
@@ -65,6 +65,18 @@ async function boot() {
   if (code) {
     history.replaceState(null, '', location.pathname + location.search);
     if (!(await isTvSession())) await loginWithCode(code).catch((err) => (refused = { code, error: codeError(err) }));
+  }
+  // Direct address /player/<slug>: no code to type when the partner turned direct access on.
+  const slug = slugFromPath(location.pathname);
+  if (slug && !(await isTvSession())) {
+    await loginOpen(slug).catch((err) => {
+      refused ??= {
+        code: '',
+        error: err instanceof ApiError && err.status === 403
+          ? 'O acesso direto está desligado. Ligue em Conta da TV no painel ou digite o código.'
+          : codeError(err),
+      };
+    });
   }
   if (!(await isTvSession())) await renderLogin(root, refused);
   await start();

@@ -47,7 +47,7 @@ const db = pg as unknown as Db;
 const [krakenPlan] = await db.insert(schema.krakenPlans).values({ name: 'Essencial', priceCents: 9900 }).returning();
 const [partner] = await db
   .insert(schema.partners)
-  .values({ name: 'Academia Demo', slug: 'academia-demo', showInstitutional: true, krakenPlanId: krakenPlan!.id })
+  .values({ name: 'Academia Demo', slug: 'academia-demo', showInstitutional: true, krakenPlanId: krakenPlan!.id, playerOpen: true })
   .returning();
 const [advertiser] = await db
   .insert(schema.advertisers)

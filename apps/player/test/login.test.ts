@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { codeFromHash, renderLogin } from '../src/login';
+import { codeFromHash, renderLogin, slugFromPath } from '../src/login';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -52,5 +52,12 @@ describe('TV sign-in with the access code', () => {
     expect(codeFromHash('')).toBeNull();
     expect(codeFromHash('#x')).toBeNull();
     expect(codeFromHash('#%E0%A4%A')).toBeNull(); // malformed escape must not break the player
+  });
+
+  it('reads the establishment from a direct address like /player/academia-demo', () => {
+    expect(slugFromPath('/player/academia-demo')).toBe('academia-demo');
+    expect(slugFromPath('/player/Academia-Demo/')).toBe('academia-demo');
+    expect(slugFromPath('/player/')).toBeNull();
+    expect(slugFromPath('/player/index.html')).toBeNull();
   });
 });
