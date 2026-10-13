@@ -134,7 +134,8 @@ export class DomScreen implements Screen {
     outgoing.el.classList.add('out');
     void sleep(this.transitionMs + 50).then(() => {
       outgoing.el.classList.remove('out');
-      outgoing.video.pause();
+      // Fully unload (not just pause): a paused video still holds the TV's only decoder.
+      if (outgoing.video.getAttribute('src')) this.releaseVideo(outgoing.video);
       unlock();
     });
 
@@ -165,11 +166,20 @@ export class DomScreen implements Screen {
     });
   }
 
+  freeVideo(): void {
+    const layer = this.layers[this.active]!;
+    if (layer.video.getAttribute('src')) this.releaseVideo(layer.video);
+  }
+
+  private releaseVideo(video: HTMLVideoElement): void {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  }
+
   /** Frees the decoder of a layer that is not on screen. */
   private release(layer: Layer): void {
-    layer.video.pause();
-    layer.video.removeAttribute('src');
-    layer.video.load();
+    this.releaseVideo(layer.video);
     layer.img.removeAttribute('src');
   }
 }

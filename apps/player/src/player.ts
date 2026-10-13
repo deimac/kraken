@@ -11,6 +11,8 @@ export interface Screen {
   setTransition(type: Transition, ms: number): void;
   setMuted(muted: boolean): void;
   showWaiting(on: boolean): void;
+  /** Releases the video decoder held by the ad that just ended (it stays on screen as a dark frame). */
+  freeVideo?(): void;
 }
 
 interface Deps {
@@ -81,8 +83,15 @@ export async function runPlayer(deps: Deps): Promise<void> {
     screen.showWaiting(false);
     const playing = screen.present(current.item);
     const next = rotation!.next()!;
-    pending = { item: next, ready: screen.preload(next) };
+    // Many TVs (Fire TV included) decode one video at a time: loading the next video while one plays turns the
+    // screen black. Video after video waits for the first to end; images can still be prepared meanwhile.
+    const oneDecoder = current.item.media.mediaType === 'video' && next.media.mediaType === 'video';
+    if (!oneDecoder) pending = { item: next, ready: screen.preload(next) };
     const result = await playing;
+    if (oneDecoder) {
+      screen.freeVideo?.();
+      pending = { item: next, ready: screen.preload(next) };
+    }
     deps.onPlayed?.(current.item, result);
     if (result === 'completed') {
       failures = 0;
