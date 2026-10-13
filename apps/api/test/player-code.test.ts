@@ -94,5 +94,10 @@ describe('TV access code', () => {
     expect(res.json().user).toMatchObject({ role: 'player', partnerId: s.partnerB.id });
     expect((await t.app.inject({ method: 'GET', url: '/api/player/manifest', headers: { cookie: tvCookie(res)! } })).statusCode).toBe(200);
     expect((await slugLogin('nao-existe', '10.1.1.3')).json()).toEqual({ error: 'direct_access_off' });
+    // bare /player/: works while exactly one establishment has direct access on
+    const bare = await post('/api/player/open-login', {}, undefined, '10.1.1.4');
+    expect(bare.json().user.partnerId).toBe(s.partnerB.id);
+    await t.app.inject({ method: 'PATCH', url: '/api/partner/settings', headers: { cookie: s.gerenteA }, payload: { playerOpen: true } });
+    expect((await post('/api/player/open-login', {}, undefined, '10.1.1.5')).json()).toEqual({ error: 'direct_access_off' });
   });
 });

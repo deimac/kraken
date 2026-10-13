@@ -12,7 +12,7 @@ import { ensurePlayerUser } from './account';
 import { hashTvCode } from './code';
 
 const CodeBody = z.object({ code: z.string().min(8).max(40) }).strict();
-const OpenBody = z.object({ slug: z.string().trim().toLowerCase().min(1).max(60) }).strict();
+const OpenBody = z.object({ slug: z.string().trim().toLowerCase().min(1).max(60).optional() }).strict();
 
 export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean; version?: string }> = async (app, { db, cookieSecure, version }) => {
   app.post('/api/player/login', { config: { rateLimit: LOGIN_RATE_LIMIT } }, async (req, reply) => {
@@ -41,14 +41,17 @@ export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean; v
     return { user };
   });
 
-  // Direct access (partner opted in): the TV only needs its address, /player/<slug>.
+  // Direct access (partner opted in): the TV only needs its address, /player/<slug> — or just /player/ while
+  // a single establishment has it on.
   app.post('/api/player/open-login', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
     const body = parse(OpenBody, req.body, reply);
     if (!body) return reply;
-    const [p] = await db
+    const open = await db
       .select({ id: partners.id })
       .from(partners)
-      .where(and(eq(partners.slug, body.slug), eq(partners.playerOpen, true), eq(partners.status, 'active')));
+      .where(and(body.slug ? eq(partners.slug, body.slug) : undefined, eq(partners.playerOpen, true), eq(partners.status, 'active')))
+      .limit(2);
+    const p = open.length === 1 ? open[0]! : null;
     if (!p) return reply.code(403).send({ error: 'direct_access_off' });
     const user = await ensurePlayerUser(db, p.id);
     const { token, expiresAt } = await createSession(db, user);

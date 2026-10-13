@@ -68,8 +68,10 @@ async function boot() {
   }
   // Direct address /player/<slug>: no code to type when the partner turned direct access on.
   const slug = slugFromPath(location.pathname);
-  if (slug && !(await isTvSession())) {
+  if (!(await isTvSession())) {
     await loginOpen(slug).catch((err) => {
+      // Bare /player/ without direct access: just show the code form.
+      if (!slug && err instanceof ApiError && err.status === 403) return;
       refused ??= {
         code: '',
         error: err instanceof ApiError && err.status === 403

@@ -18,7 +18,7 @@ export function slugFromPath(path: string): string | null {
 }
 
 /** Signs the TV in by its address alone (only when the partner turned direct access on). */
-export const loginOpen = (slug: string) => api('/api/player/open-login', { method: 'POST', body: { slug } });
+export const loginOpen = (slug: string | null) => api('/api/player/open-login', { method: 'POST', body: slug ? { slug } : {} });
 
 /** Signs the TV in with its access code; resolves when accepted. */
 export const loginWithCode = (code: string) => api('/api/player/code-login', { method: 'POST', body: { code } });

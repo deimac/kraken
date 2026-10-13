@@ -1,7 +1,7 @@
 # Teste do player na Fire TV Stick 4K
 
 1. Na Fire TV, abra o navegador **Silk** (ou outro de sua preferência).
-2. Mais simples para testes: no painel, em **Conta da TV**, ligue **Acesso direto** e abra na TV `http://<domínio do Kraken Ads>/player/<endereço-do-parceiro>` (ex.: `/player/academia-demo`) — sem código nem senha. Desligue quando terminar de configurar. Alternativa com código: em **Conta da TV**, clique em **Gerar código de acesso**. Na TV, abra o link mostrado (`http://<domínio do Kraken Ads>/player/#CÓDIGO`) ou abra `http://<domínio do Kraken Ads>/player/` e digite o código. Não há usuário nem senha. O código vale 24 horas (para quantas TVs quiser nesse prazo); depois disso, gere outro. As TVs já conectadas continuam funcionando.
+2. Mais simples para testes: no painel, em **Conta da TV**, ligue **Acesso direto** e abra na TV `http://<domínio do Kraken Ads>/player/<endereço-do-parceiro>` (ex.: `/player/academia-demo`) — sem código nem senha. Se for o único estabelecimento com acesso direto ligado, basta `/player/`. Desligue quando terminar de configurar. Alternativa com código: em **Conta da TV**, clique em **Gerar código de acesso**. Na TV, abra o link mostrado (`http://<domínio do Kraken Ads>/player/#CÓDIGO`) ou abra `http://<domínio do Kraken Ads>/player/` e digite o código. Não há usuário nem senha. O código vale 24 horas (para quantas TVs quiser nesse prazo); depois disso, gere outro. As TVs já conectadas continuam funcionando.
 3. Aperte qualquer botão do controle: aparecem **Ativar som**, **Tela cheia** e **Sair**. Ative som e tela cheia.
 4. Deixe tocando por pelo menos 2 horas e observe:
    - os anúncios passam sem tela preta entre eles;

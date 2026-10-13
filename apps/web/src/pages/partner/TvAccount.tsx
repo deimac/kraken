@@ -110,6 +110,7 @@ export function TvAccount() {
           </div>
         )}
         <p className="muted">
+          Se este for o único estabelecimento com acesso direto, basta abrir <strong>{window.location.origin}/player</strong>.
           Prático para testes e para digitar com o controle remoto. Enquanto estiver ligado, qualquer pessoa com o endereço pode
           abrir o player deste estabelecimento; desligue quando terminar de configurar as TVs.
         </p>
