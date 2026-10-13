@@ -152,7 +152,15 @@ export const plans = pgTable(
   ],
 );
 
-export const CAMPAIGN_STATUSES = ['draft', 'pending_review', 'changes_requested', 'approved', 'cancelled'] as const;
+// A commercial campaign is shown to people as a "subscription" (assinatura): advertiser + plan + period, with pieces.
+export const CAMPAIGN_STATUSES = ['active', 'paused', 'cancelled'] as const;
+export const PAYMENT_STATUSES = ['pending', 'paid'] as const;
+export const PIECE_STATUSES = ['pending_review', 'approved', 'rejected', 'removed'] as const;
+export type PieceStatus = (typeof PIECE_STATUSES)[number];
+export const REVIEW_ACTIONS = [
+  'submitted', 'approved', 'changes_requested', 'cancelled', // legacy campaign flow
+  'created', 'paused', 'resumed', 'payment', 'piece_added', 'piece_submitted', 'piece_approved', 'piece_rejected', 'piece_removed',
+] as const;
 export type CampaignStatus = (typeof CAMPAIGN_STATUSES)[number];
 
 export const campaigns = pgTable(
@@ -166,17 +174,16 @@ export const campaigns = pgTable(
     name: text('name').notNull(),
     startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
     endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
-    status: text('status', { enum: CAMPAIGN_STATUSES }).notNull().default('draft'),
+    status: text('status', { enum: CAMPAIGN_STATUSES }).notNull().default('active'),
     frequencyLevel: text('frequency_level', { enum: FREQUENCY_LEVELS }).notNull(),
-    currentMediaId: uuid('current_media_id').references((): AnyPgColumn => media.id, { onDelete: 'set null' }),
+    priceCents: integer('price_cents').notNull().default(0), // copied from the plan when created
+    paymentStatus: text('payment_status', { enum: PAYMENT_STATUSES }).notNull().default('pending'),
     ...timestamps,
   },
   (t) => [
     check('campaigns_kind_check', sql`${t.kind} in ('commercial', 'institutional')`),
-    check(
-      'campaigns_status_check',
-      sql`${t.status} in ('draft', 'pending_review', 'changes_requested', 'approved', 'cancelled')`,
-    ),
+    check('campaigns_status_check', sql`${t.status} in ('active', 'paused', 'cancelled')`),
+    check('campaigns_payment_check', sql`${t.paymentStatus} in ('pending', 'paid')`),
     check('campaigns_frequency_check', sql`${t.frequencyLevel} in ('low', 'medium', 'high')`),
     check('campaigns_period_check', sql`${t.endsAt} > ${t.startsAt}`),
     check(
@@ -202,11 +209,16 @@ export const media = pgTable(
     durationMs: integer('duration_ms'),
     sha256: text('sha256').notNull(),
     displaySeconds: integer('display_seconds'),
+    status: text('status', { enum: PIECE_STATUSES }).notNull().default('approved'),
+    reviewReason: text('review_reason'),
+    uploadedBy: uuid('uploaded_by').references((): AnyPgColumn => users.id, { onDelete: 'set null' }),
+    originalName: text('original_name'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     check('media_type_check', sql`${t.mediaType} in ('image', 'video')`),
     check('media_display_check', sql`(${t.mediaType} = 'image') = (${t.displaySeconds} is not null)`),
+    check('media_status_check', sql`${t.status} in ('pending_review', 'approved', 'rejected', 'removed')`),
     index('media_campaign_idx').on(t.campaignId),
   ],
 );
@@ -216,13 +228,18 @@ export const campaignReviews = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     campaignId: uuid('campaign_id').notNull().references(() => campaigns.id, { onDelete: 'cascade' }),
-    action: text('action', { enum: ['submitted', 'approved', 'changes_requested', 'cancelled'] }).notNull(),
+    action: text('action', { enum: REVIEW_ACTIONS }).notNull(),
+    mediaId: uuid('media_id').references(() => media.id, { onDelete: 'set null' }),
     reason: text('reason'),
     actorUserId: uuid('actor_user_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    check('campaign_reviews_action_check', sql`${t.action} in ('submitted', 'approved', 'changes_requested', 'cancelled')`),
+    check(
+      'campaign_reviews_action_check',
+      sql`${t.action} in ('submitted', 'approved', 'changes_requested', 'cancelled', 'created', 'paused', 'resumed', 'payment',
+        'piece_added', 'piece_submitted', 'piece_approved', 'piece_rejected', 'piece_removed')`,
+    ),
     index('campaign_reviews_campaign_idx').on(t.campaignId),
   ],
 );

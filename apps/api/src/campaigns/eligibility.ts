@@ -18,7 +18,7 @@ export interface EligibleItem {
   };
 }
 
-/** Campaigns a partner's TVs may play right now (spec §8). */
+/** Pieces a partner's TVs may play right now: one item per approved piece of each subscription on air. */
 export async function listEligible(db: Db, partnerId: string, now: Date = new Date()): Promise<EligibleItem[]> {
   const [partner] = await db
     .select({ status: partners.status, showInstitutional: partners.showInstitutional })
@@ -35,10 +35,10 @@ export async function listEligible(db: Db, partnerId: string, now: Date = new Da
       sizeBytes: media.sizeBytes, durationMs: media.durationMs, displaySeconds: media.displaySeconds,
     })
     .from(campaigns)
-    .innerJoin(media, eq(media.id, campaigns.currentMediaId))
+    .innerJoin(media, and(eq(media.campaignId, campaigns.id), eq(media.status, 'approved')))
     .leftJoin(advertisers, eq(advertisers.id, campaigns.advertiserId))
-    .where(and(owner, isNull(advertisers.archivedAt), eq(campaigns.status, 'approved'), lte(campaigns.startsAt, now), gt(campaigns.endsAt, now)))
-    .orderBy(asc(campaigns.createdAt), asc(campaigns.id));
+    .where(and(owner, isNull(advertisers.archivedAt), eq(campaigns.status, 'active'), lte(campaigns.startsAt, now), gt(campaigns.endsAt, now)))
+    .orderBy(asc(campaigns.createdAt), asc(campaigns.id), asc(media.createdAt), asc(media.id));
   return rows.map((r) => ({
     campaignId: r.campaignId, kind: r.kind, name: r.name, frequencyLevel: r.frequencyLevel,
     media: {
