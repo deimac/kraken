@@ -1,11 +1,8 @@
-import { Navigate, Route, Routes } from 'react-router';
+import { Navigate, Route, Routes, useParams } from 'react-router';
 import { AuthProvider, RequireRole } from './auth';
 import { Institutional } from './pages/admin/Institutional';
 import { KrakenPlans } from './pages/admin/KrakenPlans';
 import { Partners } from './pages/admin/Partners';
-import { CampaignDetail } from './pages/campaigns/CampaignDetail';
-import { CampaignForm } from './pages/campaigns/CampaignForm';
-import { CampaignList } from './pages/campaigns/CampaignList';
 import { Home, TvNotice } from './pages/Home';
 import { Login } from './pages/Login';
 import { AdvertiserDetail } from './pages/partner/AdvertiserDetail';
@@ -15,7 +12,16 @@ import { Plans } from './pages/partner/Plans';
 import { TvAccount } from './pages/partner/TvAccount';
 import { PublicPartner } from './pages/public/PublicPartner';
 import { Reports } from './pages/reports/Reports';
+import { SubscriptionDetail } from './pages/subscriptions/SubscriptionDetail';
+import { SubscriptionForm } from './pages/subscriptions/SubscriptionForm';
+import { SubscriptionList } from './pages/subscriptions/SubscriptionList';
 import { Layout } from './ui';
+
+/** Campaigns became subscriptions: keep old bookmarks working. */
+function OldAddress({ base }: { base: string }) {
+  const rest = useParams()['*'] ?? '';
+  return <Navigate to={`${base}/assinaturas${rest ? `/${rest}` : ''}`} replace />;
+}
 
 export function AppRoutes() {
   return (
@@ -32,10 +38,11 @@ export function AppRoutes() {
         <Route path="relatorios" element={<Reports />} />
       </Route>
       <Route path="/parceiro" element={<RequireRole role="partner_user"><Layout role="partner_user" /></RequireRole>}>
-        <Route index element={<Navigate to="campanhas" replace />} />
-        <Route path="campanhas" element={<CampaignList base="/parceiro" />} />
-        <Route path="campanhas/nova" element={<CampaignForm base="/parceiro" />} />
-        <Route path="campanhas/:id" element={<CampaignDetail base="/parceiro" />} />
+        <Route index element={<Navigate to="assinaturas" replace />} />
+        <Route path="assinaturas" element={<SubscriptionList base="/parceiro" />} />
+        <Route path="assinaturas/nova" element={<SubscriptionForm base="/parceiro" />} />
+        <Route path="assinaturas/:id" element={<SubscriptionDetail base="/parceiro" />} />
+        <Route path="campanhas/*" element={<OldAddress base="/parceiro" />} />
         <Route path="anunciantes" element={<Advertisers />} />
         <Route path="anunciantes/novo" element={<AdvertiserForm />} />
         <Route path="anunciantes/:id" element={<AdvertiserDetail />} />
@@ -45,10 +52,11 @@ export function AppRoutes() {
         <Route path="relatorios" element={<Reports />} />
       </Route>
       <Route path="/anunciante" element={<RequireRole role="advertiser"><Layout role="advertiser" /></RequireRole>}>
-        <Route index element={<Navigate to="campanhas" replace />} />
-        <Route path="campanhas" element={<CampaignList base="/anunciante" />} />
-        <Route path="campanhas/nova" element={<CampaignForm base="/anunciante" />} />
-        <Route path="campanhas/:id" element={<CampaignDetail base="/anunciante" />} />
+        <Route index element={<Navigate to="assinaturas" replace />} />
+        <Route path="assinaturas" element={<SubscriptionList base="/anunciante" />} />
+        <Route path="assinaturas/nova" element={<SubscriptionForm base="/anunciante" />} />
+        <Route path="assinaturas/:id" element={<SubscriptionDetail base="/anunciante" />} />
+        <Route path="campanhas/*" element={<OldAddress base="/anunciante" />} />
         <Route path="relatorios" element={<Reports />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

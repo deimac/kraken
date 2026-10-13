@@ -157,3 +157,23 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .plan-limits { display: flex; align-items: center; gap: 6px; font-size: 13px; }
 .plan-desc { margin: 0; font-size: 13px; }
 .plan-card .actions { margin-top: auto; }
+.section-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 8px; }
+.section-head h2 { margin: 0; }
+.section-head .field { gap: 2px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.btn.is-busy { opacity: 0.6; cursor: progress; }
+.piece-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.piece { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+.piece img, .piece video { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: #000; display: block; }
+.piece-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.piece-body strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.piece-body .actions { margin-top: 4px; }
+.piece-rejected { opacity: 0.75; }
+.chip.chip-approved { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.chip.chip-pending_review { background: color-mix(in srgb, #d98e04 20%, transparent); color: #b97700; }
+.chip.chip-rejected { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+.piece-body .chip { margin-left: 0; align-self: flex-start; }
+.upload-results { list-style: none; padding: 0; margin: 0 0 12px; font-size: 13px; }
+.upload-results .ok { color: var(--accent); }
+.upload-results .error { color: var(--danger); }
+.plan-summary { max-width: 360px; }

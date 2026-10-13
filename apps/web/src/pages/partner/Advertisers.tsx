@@ -54,7 +54,7 @@ export function Advertisers() {
       {error && <Notice kind="error">{error}</Notice>}
       <div className="stats">
         <StatCard icon={<IconUsers size={20} />} label="Ativos" value={active.length} />
-        <StatCard icon={<IconSpeakerphone size={20} />} label="Com campanha no ar" value={active.filter((a) => (a.activeCampaigns ?? 0) > 0).length} />
+        <StatCard icon={<IconSpeakerphone size={20} />} label="Com assinatura no ar" value={active.filter((a) => (a.activeCampaigns ?? 0) > 0).length} />
         <StatCard icon={<IconArchive size={20} />} label="Arquivados" value={archived.length} />
       </div>
       <div className="toolbar">

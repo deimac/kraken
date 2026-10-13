@@ -88,11 +88,11 @@ export function AdvertiserDetail() {
         }
       />
       {error && <Notice kind="error">{error}</Notice>}
-      {a.archivedAt && <Notice kind="info">Arquivado em {formatDate(a.archivedAt)}. As campanhas deste anunciante não aparecem nas TVs.</Notice>}
+      {a.archivedAt && <Notice kind="info">Arquivado em {formatDate(a.archivedAt)}. As assinaturas deste anunciante não aparecem nas TVs.</Notice>}
       <div className="stats">
         <StatCard icon={<IconChartBar size={20} />} label="Inserções no mês" value={data.playsThisMonth} />
-        <StatCard icon={<IconSpeakerphone size={20} />} label="Campanhas no ar" value={live} />
-        <StatCard icon={<IconCalendarEvent size={20} />} label="Campanhas no total" value={data.campaigns.length} />
+        <StatCard icon={<IconSpeakerphone size={20} />} label="Assinaturas no ar" value={live} />
+        <StatCard icon={<IconCalendarEvent size={20} />} label="Assinaturas no total" value={data.campaigns.length} />
       </div>
       <div className="card">
         <h2>Dados</h2>
@@ -103,18 +103,18 @@ export function AdvertiserDetail() {
         </dl>
         {a.notes && <p className="muted" style={{ marginBottom: 0 }}>{a.notes}</p>}
       </div>
-      <h2>Campanhas</h2>
+      <h2>Assinaturas</h2>
       <div className="list">
         {data.campaigns.map((c) => (
-          <Link className="row" key={c.id} to={`/parceiro/campanhas/${c.id}`}>
+          <Link className="row" key={c.id} to={`/parceiro/assinaturas/${c.id}`}>
             <div className="row-main">
               <div>{c.name}</div>
-              <div className="row-sub">{formatDate(c.startsAt)} a {formatDate(lastDay(c.endsAt))}</div>
+              <div className="row-sub">{formatDate(c.startsAt)} a {lastDay(c.endsAt)}</div>
             </div>
             <Badge status={c.effectiveStatus} />
           </Link>
         ))}
-        {data.campaigns.length === 0 && <EmptyState icon={<IconSpeakerphone size={28} />} title="Nenhuma campanha ainda" />}
+        {data.campaigns.length === 0 && <EmptyState icon={<IconSpeakerphone size={28} />} title="Nenhuma assinatura ainda" />}
       </div>
       <ConfirmDialog
         open={confirming}

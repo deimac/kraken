@@ -1,5 +1,5 @@
 import {
-  IconBuildingStore, IconChartBar, IconDeviceTv, IconLogout, IconReceipt, IconSearch, IconSpeakerphone, IconTags, IconUsersGroup,
+  IconBuildingStore, IconChartBar, IconDeviceTv, IconLogout, IconReceipt, IconReceipt2, IconSearch, IconSpeakerphone, IconTags, IconUsersGroup,
 } from '@tabler/icons-react';
 import { useEffect, useId, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
@@ -16,14 +16,14 @@ const NAV: Record<Exclude<Role, 'player'>, { to: string; label: string; icon: Re
     { to: '/admin/relatorios', label: 'Relatórios', icon: <IconChartBar size={18} /> },
   ],
   partner_user: [
-    { to: '/parceiro/campanhas', label: 'Campanhas', icon: <IconSpeakerphone size={18} /> },
+    { to: '/parceiro/assinaturas', label: 'Assinaturas', icon: <IconReceipt2 size={18} /> },
     { to: '/parceiro/anunciantes', label: 'Anunciantes', icon: <IconBuildingStore size={18} /> },
     { to: '/parceiro/planos', label: 'Planos de anúncio', icon: <IconTags size={18} /> },
     { to: '/parceiro/tv', label: 'Conta da TV', icon: <IconDeviceTv size={18} /> },
     { to: '/parceiro/relatorios', label: 'Relatórios', icon: <IconChartBar size={18} /> },
   ],
   advertiser: [
-    { to: '/anunciante/campanhas', label: 'Minhas campanhas', icon: <IconSpeakerphone size={18} /> },
+    { to: '/anunciante/assinaturas', label: 'Minhas assinaturas', icon: <IconReceipt2 size={18} /> },
     { to: '/anunciante/relatorios', label: 'Relatórios', icon: <IconChartBar size={18} /> },
   ],
 };

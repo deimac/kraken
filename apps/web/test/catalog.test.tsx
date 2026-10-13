@@ -22,7 +22,7 @@ describe('advertisers', () => {
     expect(await screen.findByText('Loja Fit')).toBeTruthy();
     expect(screen.getAllByText('11.222.333/0001-81', { exact: false }).length).toBeGreaterThan(0);
     expect(screen.getByText('autocadastro')).toBeTruthy();
-    expect(screen.getByText('Com campanha no ar').parentElement!.textContent).toContain('1');
+    expect(screen.getByText('Com assinatura no ar').parentElement!.textContent).toContain('1');
     expect(screen.getByText('Arquivados', { selector: '.stat-label' }).parentElement!.textContent).toContain('1');
     await userEvent.type(screen.getByLabelText('Buscar'), 'vida');
     await waitFor(() => expect(calls.some((c) => c.path === '/api/partner/advertisers?q=vida')).toBe(true));
@@ -92,7 +92,7 @@ describe('advertisers', () => {
     expect(await screen.findByRole('button', { name: 'Desarquivar' })).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Excluir' }));
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Excluir' }));
-    expect(await screen.findByText('Este anunciante tem campanhas; arquive em vez de excluir.')).toBeTruthy();
+    expect(await screen.findByText('Este anunciante tem assinaturas; arquive em vez de excluir.')).toBeTruthy();
   });
 });
 

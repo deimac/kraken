@@ -15,12 +15,12 @@ describe('login and session', () => {
       'POST /api/auth/login': () => { me = { user: partnerUser }; return { user: partnerUser }; },
       'GET /api/campaigns': empty,
     });
-    renderAt('/parceiro/campanhas');
+    renderAt('/parceiro/assinaturas');
     expect(await screen.findByRole('heading', { name: 'Entrar' })).toBeTruthy();
     await userEvent.type(screen.getByLabelText('E-mail'), 'g@a.com');
     await userEvent.type(screen.getByLabelText('Senha'), 'senha-forte-1');
     await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
-    expect(await screen.findByRole('heading', { name: 'Campanhas' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Assinaturas' })).toBeTruthy();
   });
 
   it('shows a Portuguese message for wrong credentials', async () => {
@@ -38,7 +38,7 @@ describe('login and session', () => {
   it('keeps advertisers out of partner and admin areas', async () => {
     mockApi({ 'GET /api/auth/me': { user: advertiserUser }, 'GET /api/campaigns': empty });
     renderAt('/admin/parceiros');
-    expect(await screen.findByRole('heading', { name: 'Minhas campanhas' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Minhas assinaturas' })).toBeTruthy();
     expect(screen.queryByText('Parceiros')).toBeNull();
   });
 
@@ -49,8 +49,8 @@ describe('login and session', () => {
       'GET /api/campaigns': empty,
       'GET /api/partner/plans': () => { expired = true; return reply(401, { error: 'unauthenticated' }); },
     });
-    renderAt('/parceiro/campanhas');
-    await screen.findByRole('heading', { name: 'Campanhas' });
+    renderAt('/parceiro/assinaturas');
+    await screen.findByRole('heading', { name: 'Assinaturas' });
     await userEvent.click(screen.getByRole('link', { name: /Planos/ }));
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Entrar' })).toBeTruthy());
   });
@@ -62,7 +62,7 @@ describe('login and session', () => {
       'GET /api/campaigns': empty,
       'POST /api/auth/logout': () => { logged = false; return reply(204); },
     });
-    renderAt('/parceiro/campanhas');
+    renderAt('/parceiro/assinaturas');
     await userEvent.click(await screen.findByRole('button', { name: 'Sair' }));
     expect(await screen.findByRole('heading', { name: 'Entrar' })).toBeTruthy();
   });
@@ -70,7 +70,7 @@ describe('login and session', () => {
   it('sends bare area URLs to the area home', async () => {
     mockApi({ 'GET /api/auth/me': { user: partnerUser }, 'GET /api/campaigns': empty });
     renderAt('/parceiro');
-    expect(await screen.findByRole('heading', { name: 'Campanhas' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Assinaturas' })).toBeTruthy();
   });
 });
 

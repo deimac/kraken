@@ -30,7 +30,7 @@ describe('public partner page', () => {
     expect(calls.find((c) => c.method === 'POST')!.body).toEqual({
       companyName: 'Loja Fit', contactName: 'Bia', email: 'bia@lojafit.com', password: 'senha-loja-1', personType: 'pj', document: '11222333000181',
     });
-    expect(await screen.findByRole('heading', { name: 'Minhas campanhas' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Minhas assinaturas' })).toBeTruthy();
   });
 
   it('shows a not-found message for unknown partners', async () => {

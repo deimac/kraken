@@ -47,8 +47,8 @@ export function useAuth(): AuthState {
 
 export function homeFor(user: User): string {
   if (user.role === 'admin') return '/admin/parceiros';
-  if (user.role === 'partner_user') return '/parceiro/campanhas';
-  if (user.role === 'advertiser') return '/anunciante/campanhas';
+  if (user.role === 'partner_user') return '/parceiro/assinaturas';
+  if (user.role === 'advertiser') return '/anunciante/assinaturas';
   return '/tv';
 }
 

@@ -1,24 +1,30 @@
-import type { EffectiveStatus, FrequencyLevel } from './types';
+import type { EffectiveStatus, FrequencyLevel, PieceStatus } from './types';
 
 export const STATUS_LABEL: Record<EffectiveStatus, string> = {
-  draft: 'Rascunho',
-  pending_review: 'Aguardando aprovação',
-  changes_requested: 'Correção pedida',
-  approved: 'Aprovada',
+  active: 'No ar',
   scheduled: 'Agendada',
-  active: 'Ativa',
   ended: 'Encerrada',
+  paused: 'Pausada',
   cancelled: 'Cancelada',
 };
 
 export type Tone = 'pending' | 'active' | 'changes' | 'neutral' | 'off';
 export function statusTone(s: EffectiveStatus): Tone {
-  if (s === 'pending_review') return 'pending';
-  if (s === 'active' || s === 'approved') return 'active';
-  if (s === 'changes_requested') return 'changes';
+  if (s === 'active') return 'active';
+  if (s === 'paused') return 'pending';
   if (s === 'ended' || s === 'cancelled') return 'off';
   return 'neutral';
 }
+
+export const PIECE_STATUS_LABEL: Record<PieceStatus, string> = {
+  pending_review: 'Aguardando aprovação',
+  approved: 'Aprovada',
+  rejected: 'Recusada',
+  removed: 'Removida',
+};
+
+export const pieceName = (p: { originalName: string | null; mediaType: 'image' | 'video' }) =>
+  p.originalName ?? (p.mediaType === 'video' ? 'Vídeo' : 'Imagem');
 
 export const FREQUENCY_LABEL: Record<FrequencyLevel, string> = { low: 'Baixa', medium: 'Média', high: 'Alta' };
 
@@ -101,3 +107,16 @@ export function planLimits(p: { maxVideos: number; maxImages: number; maxVideoSe
 
 /** 125050 → "1250,50" for editing in a money input. */
 export const centsToInput = (cents: number | null): string => (cents === null ? '' : (cents / 100).toFixed(2).replace('.', ','));
+
+/** YYYY-MM-DD of a local date. */
+export function isoDay(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Last day of a period of `months` starting on `startDay` (inclusive): 2026-11-01 + 1 month → 2026-11-30. */
+export function periodEnd(startDay: string, months: number): string {
+  const d = new Date(`${startDay}T00:00:00`);
+  d.setMonth(d.getMonth() + months);
+  d.setDate(d.getDate() - 1);
+  return isoDay(d);
+}

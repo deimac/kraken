@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../api';
-import { FREQUENCY_LABEL, formatDate, lastDay, toApiRange } from '../../format';
+import { FREQUENCY_LABEL, formatDate, lastDay, pieceName, toApiRange } from '../../format';
 import { errorMessage } from '../../messages';
-import type { Campaign, FrequencyLevel } from '../../types';
+import type { FrequencyLevel, InstitutionalCampaign as Campaign } from '../../types';
 import { Badge, Field, Notice, PageHeader } from '../../ui';
 
 export function Institutional() {
@@ -31,7 +31,7 @@ export function Institutional() {
       setName('');
       setStart('');
       setEnd('');
-      setMsg({ kind: 'ok', text: 'Campanha criada. Envie a mídia para ela entrar na rotação.' });
+      setMsg({ kind: 'ok', text: 'Campanha criada. Envie as peças para ela entrar na rotação.' });
       await load();
     } catch (err) {
       setMsg({ kind: 'error', text: errorMessage(err) });
@@ -44,8 +44,18 @@ export function Institutional() {
     const form = new FormData();
     form.append('file', file);
     try {
-      await api(`/api/admin/campaigns/${c.id}/media`, { method: 'POST', form });
-      setMsg({ kind: 'ok', text: `Mídia enviada para ${c.name}.` });
+      await api(`/api/admin/campaigns/${c.id}/pieces`, { method: 'POST', form });
+      setMsg({ kind: 'ok', text: `Peça enviada para ${c.name}.` });
+      await load();
+    } catch (err) {
+      setMsg({ kind: 'error', text: errorMessage(err) });
+    }
+  }
+
+  async function removePiece(c: Campaign, pieceId: string, label: string) {
+    if (!window.confirm(`Remover ${label} de ${c.name}?`)) return;
+    try {
+      await api(`/api/admin/campaigns/${c.id}/pieces/${pieceId}/remove`, { method: 'POST' });
       await load();
     } catch (err) {
       setMsg({ kind: 'error', text: errorMessage(err) });
@@ -73,14 +83,23 @@ export function Institutional() {
               <div>{c.name}</div>
               <div className="row-sub">
                 {formatDate(c.startsAt)} a {lastDay(c.endsAt)} · frequência {FREQUENCY_LABEL[c.frequencyLevel].toLowerCase()} ·{' '}
-                {c.currentMediaId ? 'com mídia' : 'sem mídia'}
+                {c.pieces.length === 0 ? 'sem peças' : `${c.pieces.length} ${c.pieces.length === 1 ? 'peça' : 'peças'}`}
               </div>
+              {c.status !== 'cancelled' && c.pieces.length > 0 && (
+                <div className="row-sub">
+                  {c.pieces.map((p) => (
+                    <button key={p.id} type="button" className="chip" aria-label={`Remover ${pieceName(p)}`} onClick={() => removePiece(c, p.id, pieceName(p))}>
+                      {pieceName(p)} ×
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <Badge status={c.effectiveStatus} />
-            {c.status === 'approved' && (
+            {c.status !== 'cancelled' && (
               <>
                 <label className="btn">
-                  Enviar mídia
+                  Enviar peça
                   <input
                     hidden
                     type="file"

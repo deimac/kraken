@@ -88,6 +88,13 @@ export function Reports() {
             </div>
             {open === r.campaignId && (
               <ul className="timeline" style={{ padding: '0 14px 12px' }}>
+                {r.pieces.length > 1 &&
+                  r.pieces.map((p) => (
+                    <li key={p.mediaId} className="row" style={{ padding: '4px 0' }}>
+                      <span className="row-main">{p.mediaType === 'video' ? 'Vídeo' : 'Imagem'}: {p.label}</span>
+                      <span>{fmt(p.total)}</span>
+                    </li>
+                  ))}
                 {r.days.map((d) => (
                   <li key={d.day} className="row" style={{ padding: '4px 0' }}>
                     <span className="row-main">{br(d.day)}</span>

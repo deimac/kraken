@@ -7,8 +7,8 @@ import { advertiserUser, partnerUser, renderAt } from './render';
 const report = {
   from: '2026-10-01', to: '2026-10-12',
   campaigns: [
-    { campaignId: 'c1', name: 'Verão', kind: 'commercial', advertiserName: 'Loja Fit', total: 120, days: [{ day: '2026-10-10', count: 50 }, { day: '2026-10-11', count: 70 }] },
-    { campaignId: 'c2', name: 'Anuncie aqui', kind: 'institutional', advertiserName: null, total: 30, days: [{ day: '2026-10-11', count: 30 }] },
+    { campaignId: 'c1', name: 'Verão', kind: 'commercial', advertiserName: 'Loja Fit', total: 120, days: [{ day: '2026-10-10', count: 50 }, { day: '2026-10-11', count: 70 }], pieces: [{ mediaId: 'm1', label: 'jeep.mp4', mediaType: 'video', total: 80 }, { mediaId: 'm2', label: 'banner.png', mediaType: 'image', total: 40 }] },
+    { campaignId: 'c2', name: 'Anuncie aqui', kind: 'institutional', advertiserName: null, total: 30, days: [{ day: '2026-10-11', count: 30 }], pieces: [{ mediaId: 'm3', label: 'kraken.png', mediaType: 'image', total: 30 }] },
   ],
 };
 

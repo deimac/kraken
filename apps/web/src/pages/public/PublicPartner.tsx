@@ -46,7 +46,7 @@ export function PublicPartner() {
     try {
       const r = await api<{ user: User }>(`/api/public/partners/${encodeURIComponent(slug)}/advertisers`, { method: 'POST', body });
       setUser(r.user);
-      navigate('/anunciante/campanhas');
+      navigate('/anunciante/assinaturas');
     } catch (err) {
       setError(errorMessage(err));
       setBusy(false);

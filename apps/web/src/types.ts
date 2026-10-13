@@ -1,8 +1,9 @@
 export type Transition = 'fade' | 'slide' | 'cut';
 export type Role = 'admin' | 'partner_user' | 'advertiser' | 'player';
 export type FrequencyLevel = 'low' | 'medium' | 'high';
-export type CampaignStatus = 'draft' | 'pending_review' | 'changes_requested' | 'approved' | 'cancelled';
-export type EffectiveStatus = CampaignStatus | 'scheduled' | 'active' | 'ended';
+export type CampaignStatus = 'active' | 'paused' | 'cancelled';
+export type EffectiveStatus = 'paused' | 'cancelled' | 'scheduled' | 'active' | 'ended';
+export type PieceStatus = 'pending_review' | 'approved' | 'rejected' | 'removed';
 
 export interface User { id: string; email: string; role: Role; partnerId: string | null; advertiserId: string | null }
 export interface Partner {
@@ -27,14 +28,23 @@ export interface Plan {
   id: string; name: string; description: string; frequencyLevel: FrequencyLevel; active?: boolean;
   maxVideos: number; maxImages: number; maxVideoSeconds: number; priceCents: number; periodMonths: number;
 }
+/** A commercial campaign is a "subscription" (assinatura) in the panel: advertiser + plan + period, with pieces. */
 export interface Campaign {
   id: string; kind: 'commercial' | 'institutional'; name: string; status: CampaignStatus; effectiveStatus: EffectiveStatus;
-  startsAt: string; endsAt: string; frequencyLevel: FrequencyLevel; currentMediaId: string | null;
-  advertiserId: string | null; advertiserName?: string;
+  startsAt: string; endsAt: string; frequencyLevel: FrequencyLevel; priceCents: number; paymentStatus: 'pending' | 'paid';
+  advertiserId: string | null; advertiserName?: string; planName?: string; pieces?: { approved: number; pending: number };
 }
-export interface Media { id: string; mediaType: 'image' | 'video'; mime: string; durationMs: number | null; displaySeconds: number | null }
-export interface Review { action: 'submitted' | 'approved' | 'changes_requested' | 'cancelled'; reason: string | null; createdAt: string }
-export interface CampaignDetail { campaign: Campaign; media: Media | null; reviews: Review[] }
+export interface Piece {
+  id: string; mediaType: 'image' | 'video'; mime: string; durationMs: number | null; displaySeconds: number | null;
+  status: PieceStatus; reviewReason: string | null; originalName: string | null; createdAt: string;
+}
+export interface Review { action: string; reason: string | null; mediaId: string | null; createdAt: string }
+export interface CampaignDetail {
+  campaign: Campaign;
+  plan: Pick<Plan, 'id' | 'name' | 'frequencyLevel' | 'maxVideos' | 'maxImages' | 'maxVideoSeconds' | 'periodMonths'> | null;
+  pieces: Piece[]; usage: { videos: number; images: number }; reviews: Review[]; totalPlays: number;
+}
+export type InstitutionalCampaign = Omit<Campaign, 'pieces'> & { pieces: Piece[] };
 export interface ReportCampaign {
   campaignId: string;
   name: string;
@@ -42,4 +52,5 @@ export interface ReportCampaign {
   advertiserName: string | null;
   total: number;
   days: { day: string; count: number }[];
+  pieces: { mediaId: string; label: string; mediaType: 'image' | 'video'; total: number }[];
 }
