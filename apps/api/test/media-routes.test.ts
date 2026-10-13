@@ -22,7 +22,7 @@ const tmpFiles = () => readdir(join(t.storage.root, 'tmp'));
 beforeAll(async () => {
   t = await createTestApp({ maxImageBytes: 1024, maxVideoBytes: 64 * 1024 });
   s = await seed(t.app, t.db);
-  const plan = (await req('POST', '/api/partner/plans', s.gerenteA, { name: 'P', frequencyLevel: 'medium' })).json().plan.id;
+  const plan = (await req('POST', '/api/partner/plans', s.gerenteA, { name: 'P', frequencyLevel: 'medium', maxVideos: 50, maxImages: 50, maxVideoSeconds: 300 })).json().plan.id;
   const adv = (await req('POST', '/api/partner/advertisers', s.gerenteA, { name: 'A', ...pj() })).json().advertiser.id;
   campaignId = (await req('POST', '/api/campaigns', s.gerenteA, {
     advertiserId: adv, planId: plan, name: 'Mídia', startsAt: '2026-01-01T00:00:00Z', endsAt: '2030-01-01T00:00:00Z',
@@ -32,43 +32,43 @@ afterAll(() => t.close());
 
 describe('upload validation', () => {
   it('accepts a PNG with display seconds and a valid H.264 MP4', async () => {
-    const img = await upload(`/api/campaigns/${campaignId}/media?displaySeconds=15`, s.gerenteA, { filename: 'x.png', contentType: 'image/png', data: PNG_BYTES });
+    const img = await upload(`/api/campaigns/${campaignId}/pieces?displaySeconds=15`, s.gerenteA, { filename: 'x.png', contentType: 'image/png', data: PNG_BYTES });
     expect(img.statusCode).toBe(201);
-    expect(img.json().media).toMatchObject({ mediaType: 'image', mime: 'image/png', displaySeconds: 15, durationMs: null });
+    expect(img.json().piece).toMatchObject({ mediaType: 'image', mime: 'image/png', displaySeconds: 15, durationMs: null });
 
-    const vid = await upload(`/api/campaigns/${campaignId}/media`, s.gerenteA, { filename: 'v.mp4', contentType: 'video/mp4', data: buildMp4({ durationMs: 12000 }) });
+    const vid = await upload(`/api/campaigns/${campaignId}/pieces`, s.gerenteA, { filename: 'v.mp4', contentType: 'video/mp4', data: buildMp4({ durationMs: 12000 }) });
     expect(vid.statusCode).toBe(201);
-    expect(vid.json().media).toMatchObject({ mediaType: 'video', mime: 'video/mp4', durationMs: 12000, displaySeconds: null });
+    expect(vid.json().piece).toMatchObject({ mediaType: 'video', mime: 'video/mp4', durationMs: 12000, displaySeconds: null });
   });
 
   it('uses the partner default image duration', async () => {
-    const img = await upload(`/api/campaigns/${campaignId}/media`, s.gerenteA, { filename: 'x.png', contentType: 'image/png', data: PNG_BYTES });
-    expect(img.json().media.displaySeconds).toBe(10);
+    const img = await upload(`/api/campaigns/${campaignId}/pieces`, s.gerenteA, { filename: 'x.png', contentType: 'image/png', data: PNG_BYTES });
+    expect(img.json().piece.displaySeconds).toBe(10);
   });
 
   it('rejects fake, HEVC and oversized files without leaving temp files', async () => {
-    const fake = await upload(`/api/campaigns/${campaignId}/media`, s.gerenteA, { filename: 'v.mp4', contentType: 'video/mp4', data: Buffer.from('this is plain text, not a video') });
+    const fake = await upload(`/api/campaigns/${campaignId}/pieces`, s.gerenteA, { filename: 'v.mp4', contentType: 'video/mp4', data: Buffer.from('this is plain text, not a video') });
     expect(fake.statusCode).toBe(415);
-    const hevc = await upload(`/api/campaigns/${campaignId}/media`, s.gerenteA, { filename: 'h.mp4', contentType: 'video/mp4', data: buildMp4({ video: 'hvc1' }) });
+    const hevc = await upload(`/api/campaigns/${campaignId}/pieces`, s.gerenteA, { filename: 'h.mp4', contentType: 'video/mp4', data: buildMp4({ video: 'hvc1' }) });
     expect(hevc.json()).toEqual({ error: 'unsupported_media' });
-    const big = await upload(`/api/campaigns/${campaignId}/media`, s.gerenteA, { filename: 'big.png', contentType: 'image/png', data: Buffer.concat([PNG_BYTES, Buffer.alloc(4096)]) });
+    const big = await upload(`/api/campaigns/${campaignId}/pieces`, s.gerenteA, { filename: 'big.png', contentType: 'image/png', data: Buffer.concat([PNG_BYTES, Buffer.alloc(4096)]) });
     expect(big.json()).toEqual({ error: 'file_too_large' });
-    const tooLong = await upload(`/api/campaigns/${campaignId}/media`, s.gerenteA, { filename: 'v.mp4', contentType: 'video/mp4', data: Buffer.concat([buildMp4(), Buffer.alloc(80 * 1024)]) });
+    const tooLong = await upload(`/api/campaigns/${campaignId}/pieces`, s.gerenteA, { filename: 'v.mp4', contentType: 'video/mp4', data: Buffer.concat([buildMp4(), Buffer.alloc(80 * 1024)]) });
     expect(tooLong.json()).toEqual({ error: 'file_too_large' });
-    const bad = await upload(`/api/campaigns/${campaignId}/media?displaySeconds=0`, s.gerenteA, { filename: 'x.png', contentType: 'image/png', data: PNG_BYTES });
+    const bad = await upload(`/api/campaigns/${campaignId}/pieces?displaySeconds=0`, s.gerenteA, { filename: 'x.png', contentType: 'image/png', data: PNG_BYTES });
     expect(bad.statusCode).toBe(400);
     expect(await tmpFiles()).toEqual([]);
   });
 
   it('rejects H.264 profiles, levels and sizes TVs cannot decode', async () => {
     for (const opts of [{ profile: 110 }, { level: 52 }, { width: 4096, height: 2160 }]) {
-      const res = await upload(`/api/campaigns/${campaignId}/media`, s.gerenteA, { filename: 'v.mp4', contentType: 'video/mp4', data: buildMp4(opts) });
+      const res = await upload(`/api/campaigns/${campaignId}/pieces`, s.gerenteA, { filename: 'v.mp4', contentType: 'video/mp4', data: buildMp4(opts) });
       expect(res.json(), JSON.stringify(opts)).toEqual({ error: 'unsupported_media' });
     }
   });
 
   it('requires a multipart file', async () => {
-    expect((await req('POST', `/api/campaigns/${campaignId}/media`, s.gerenteA, { a: 1 })).json()).toEqual({ error: 'file_required' });
+    expect((await req('POST', `/api/campaigns/${campaignId}/pieces`, s.gerenteA, { a: 1 })).json()).toEqual({ error: 'file_required' });
   });
 });
 
@@ -78,7 +78,7 @@ describe('media delivery', () => {
   beforeAll(async () => {
     const data = buildMp4({ durationMs: 3000 });
     size = data.length;
-    mediaId = (await upload(`/api/campaigns/${campaignId}/media`, s.gerenteA, { filename: 'v.mp4', contentType: 'video/mp4', data })).json().media.id;
+    mediaId = (await upload(`/api/campaigns/${campaignId}/pieces`, s.gerenteA, { filename: 'v.mp4', contentType: 'video/mp4', data })).json().piece.id;
   });
 
   it('serves the whole file with cache headers and supports ETag', async () => {
@@ -109,7 +109,9 @@ describe('media delivery', () => {
   it('is visible to the same partner, not to other partners; TVs only see eligible media', async () => {
     await t.app.inject({ method: 'PUT', url: '/api/partner/player-account', headers: { cookie: s.gerenteA }, payload: { password: 'senha-tv-123' } });
     const tv = await login(t.app, 'tv@parceiro-a', 'senha-tv-123');
-    expect((await req('GET', `/api/media/${mediaId}`, tv)).statusCode).toBe(404); // not eligible (draft)
+    await req('POST', `/api/campaigns/${campaignId}/pause`, s.gerenteA);
+    expect((await req('GET', `/api/media/${mediaId}`, tv)).statusCode).toBe(404); // not eligible (paused)
+    await req('POST', `/api/campaigns/${campaignId}/resume`, s.gerenteA);
     expect((await req('GET', `/api/media/${mediaId}`, s.gerenteB)).statusCode).toBe(404);
     expect((await req('GET', `/api/media/${mediaId}`)).statusCode).toBe(401);
   });
@@ -121,12 +123,11 @@ describe('institutional campaigns', () => {
       name: 'Anuncie aqui', frequencyLevel: 'low', startsAt: '2026-01-01T00:00:00Z', endsAt: '2030-01-01T00:00:00Z',
     });
     expect(res.statusCode).toBe(201);
-    expect(res.json().campaign).toMatchObject({ kind: 'institutional', status: 'approved', partnerId: null });
+    expect(res.json().campaign).toMatchObject({ kind: 'institutional', status: 'active', partnerId: null });
     const id = res.json().campaign.id;
-    const m = await upload(`/api/admin/campaigns/${id}/media`, s.admin, { filename: 'i.png', contentType: 'image/png', data: PNG_BYTES });
+    const m = await upload(`/api/admin/campaigns/${id}/pieces`, s.admin, { filename: 'i.png', contentType: 'image/png', data: PNG_BYTES });
     expect(m.statusCode).toBe(201);
-    expect(m.json().media.partnerId).toBeNull();
-    expect((await req('GET', `/api/media/${m.json().media.id}`, s.gerenteB)).statusCode).toBe(200);
+    expect((await req('GET', `/api/media/${m.json().piece.id}`, s.gerenteB)).statusCode).toBe(200);
     expect((await req('POST', '/api/admin/campaigns', s.gerenteA, { name: 'x', frequencyLevel: 'low', startsAt: '2026-01-01T00:00:00Z', endsAt: '2030-01-01T00:00:00Z' })).statusCode).toBe(403);
     expect((await req('POST', `/api/admin/campaigns/${id}/cancel`, s.admin)).json().campaign.status).toBe('cancelled');
     expect((await req('GET', '/api/admin/campaigns', s.admin)).json().campaigns.map((c: { id: string }) => c.id)).toContain(id);
@@ -138,6 +139,6 @@ describe('institutional campaigns', () => {
     });
     const cookie = `kraken_session=${signup.cookies.find((c) => c.name === 'kraken_session')!.value}`;
     const detail = (await req('GET', `/api/campaigns/${campaignId}`, s.gerenteA)).json();
-    expect((await req('GET', `/api/media/${detail.media.id}`, cookie)).statusCode).toBe(404);
+    expect((await req('GET', `/api/media/${detail.pieces[0].id}`, cookie)).statusCode).toBe(404);
   });
 });

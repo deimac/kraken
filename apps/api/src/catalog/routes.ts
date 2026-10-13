@@ -65,7 +65,7 @@ export const catalogRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db })
 
   const own = (id: string, partnerId: string) => and(eq(advertisers.id, id), eq(advertisers.partnerId, partnerId));
   const activeCampaigns = sql<number>`(select count(*)::int from ${campaigns} c where c.advertiser_id = "advertisers"."id"
-    and "advertisers"."archived_at" is null and c.status = 'approved' and c.starts_at <= now() and c.ends_at > now())`;
+    and "advertisers"."archived_at" is null and c.status = 'active' and c.starts_at <= now() and c.ends_at > now())`;
   const like = (q: string) => `%${q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
 
   app.get('/api/partner/advertisers', partnerOnly, async (req, reply) => {

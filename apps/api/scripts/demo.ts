@@ -6,7 +6,6 @@ import { join } from 'node:path';
 import { crc32, deflateSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
-import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import { buildApp } from '../src/app';
@@ -76,7 +75,7 @@ const [bronze, ouro] = await db
 const storage = new LocalStorage(await mkdtemp(join(tmpdir(), 'kraken-demo-')));
 await storage.init();
 
-// Two approved campaigns playing now, with different colors so transitions are visible.
+// Two subscriptions on air now, with different colors so transitions are visible.
 for (const [name, plan, color, seconds] of [
   ['Esmeralda', ouro!, [14, 138, 95], 4],
   ['Âmbar', bronze!, [232, 163, 61], 4],
@@ -85,7 +84,7 @@ for (const [name, plan, color, seconds] of [
     .insert(schema.campaigns)
     .values({
       kind: 'commercial', partnerId: partner!.id, advertiserId: advertiser!.id, planId: plan.id, name,
-      status: 'approved', frequencyLevel: plan.frequencyLevel,
+      status: 'active', frequencyLevel: plan.frequencyLevel, priceCents: plan.priceCents,
       startsAt: new Date(Date.now() - 86_400_000), endsAt: new Date(Date.now() + 30 * 86_400_000),
     })
     .returning();
@@ -97,9 +96,8 @@ for (const [name, plan, color, seconds] of [
   await storage.saveFrom(tmp, key);
   await db.insert(schema.media).values({
     id, partnerId: partner!.id, campaignId: c!.id, storageKey: key, mediaType: 'image', mime: 'image/png',
-    sizeBytes: png.length, sha256: randomUUID().replace(/-/g, ''), displaySeconds: seconds,
+    sizeBytes: png.length, sha256: randomUUID().replace(/-/g, ''), displaySeconds: seconds, originalName: `${name}.png`,
   });
-  await db.update(schema.campaigns).set({ currentMediaId: id }).where(eq(schema.campaigns.id, c!.id));
 }
 const app = await buildApp({
   version: 'demo',

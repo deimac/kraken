@@ -85,7 +85,7 @@ describe('advertisers', () => {
     const [plan] = await t.db.insert(plans).values({ partnerId: s.partnerA.id, name: 'P', frequencyLevel: 'low' }).returning();
     const now = new Date();
     const [c] = await t.db.insert(campaigns).values({
-      kind: 'commercial', partnerId: s.partnerA.id, advertiserId: adv!.id, planId: plan!.id, name: 'Camp', status: 'approved',
+      kind: 'commercial', partnerId: s.partnerA.id, advertiserId: adv!.id, planId: plan!.id, name: 'Camp', status: 'active',
       frequencyLevel: 'low', startsAt: new Date(now.getTime() - 864e5), endsAt: new Date(now.getTime() + 864e5),
     }).returning();
     const [m] = await t.db.insert(media).values({
@@ -128,7 +128,7 @@ describe('advertisers', () => {
     const [plan] = await t.db.insert(plans).values({ partnerId: s.partnerA.id, name: 'P2', frequencyLevel: 'low' }).returning();
     const now = Date.now();
     await t.db.insert(campaigns).values({
-      kind: 'commercial', partnerId: s.partnerA.id, advertiserId: adv!.id, planId: plan!.id, name: 'C', status: 'approved',
+      kind: 'commercial', partnerId: s.partnerA.id, advertiserId: adv!.id, planId: plan!.id, name: 'C', status: 'active',
       frequencyLevel: 'low', startsAt: new Date(now - 864e5), endsAt: new Date(now + 864e5),
     });
     await req('POST', `/api/partner/advertisers/${adv!.id}/archive`, s.gerenteA);

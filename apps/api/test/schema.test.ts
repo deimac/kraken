@@ -75,5 +75,5 @@ it('enforces commercial vs institutional campaign scope and period', async () =>
     db.insert(campaigns).values({ ...base, kind: 'institutional', endsAt: new Date('2025-12-01') }),
   ).rejects.toThrow();
   await db.insert(campaigns).values({ ...base, kind: 'commercial', partnerId, advertiserId: adv!.id, planId: plan!.id });
-  await db.insert(campaigns).values({ ...base, kind: 'institutional', status: 'approved' });
+  await db.insert(campaigns).values({ ...base, kind: 'institutional', status: 'active' });
 });

@@ -1,16 +1,17 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { requireRole } from '../auth/guard';
 import type { Db } from '../db/client';
-import { FREQUENCY_LEVELS, campaigns } from '../db/schema';
+import { FREQUENCY_LEVELS, campaigns, media } from '../db/schema';
 import { parse } from '../http/validation';
-import { attachMedia } from '../media/attach';
+import { addPiece } from '../media/pieces';
 import { receiveUpload, uploadRateLimit, type UploadLimits } from '../media/upload';
 import type { LocalStorage } from '../storage/local';
-import { transition, withStatus } from './routes';
+import { PIECE, changePiece, logEvent, sendPieceResult, transition, withStatus } from './routes';
 
 const IdParams = z.object({ id: z.uuid() });
+const PieceParams = z.object({ id: z.uuid(), pieceId: z.uuid() });
 const MediaQuery = z.object({ displaySeconds: z.string().optional() });
 const DateTime = z.iso.datetime({ offset: true }).transform((v) => new Date(v));
 const CreateInstitutional = z
@@ -22,6 +23,7 @@ const CreateInstitutional = z
   })
   .strict();
 
+/** Kraken Ads institutional content: no plan and no limits; the admin's pieces go straight on air. */
 export const adminCampaignRoutes: FastifyPluginAsync<{ db: Db; storage?: LocalStorage; uploadLimits?: UploadLimits }> = async (
   app,
   { db, storage, uploadLimits },
@@ -36,24 +38,33 @@ export const adminCampaignRoutes: FastifyPluginAsync<{ db: Db; storage?: LocalSt
     return c;
   };
 
-  app.get('/api/admin/campaigns', async () => ({
-    campaigns: (
-      await db.select().from(campaigns).where(eq(campaigns.kind, 'institutional')).orderBy(desc(campaigns.createdAt))
-    ).map(withStatus),
-  }));
+  app.get('/api/admin/campaigns', async () => {
+    const list = await db.select().from(campaigns).where(eq(campaigns.kind, 'institutional')).orderBy(desc(campaigns.createdAt));
+    const pieces = list.length
+      ? await db
+          .select({ ...PIECE, campaignId: media.campaignId })
+          .from(media)
+          .where(and(inArray(media.campaignId, list.map((c) => c.id)), ne(media.status, 'removed')))
+          .orderBy(asc(media.createdAt), asc(media.id))
+      : [];
+    return {
+      campaigns: list.map((c) => ({ ...withStatus(c), pieces: pieces.filter((p) => p.campaignId === c.id) })),
+    };
+  });
 
   app.post('/api/admin/campaigns', async (req, reply) => {
     const body = parse(CreateInstitutional, req.body, reply);
     if (!body) return reply;
     if (body.endsAt <= body.startsAt) return reply.code(400).send({ error: 'invalid_period' });
-    const [campaign] = await db
-      .insert(campaigns)
-      .values({ ...body, kind: 'institutional', status: 'approved' })
-      .returning();
-    return reply.code(201).send({ campaign: withStatus(campaign!) });
+    const campaign = await db.transaction(async (tx) => {
+      const [c] = await tx.insert(campaigns).values({ ...body, kind: 'institutional', status: 'active' }).returning();
+      await logEvent(tx, { campaignId: c!.id, action: 'created', actorUserId: req.user!.id });
+      return c!;
+    });
+    return reply.code(201).send({ campaign: { ...withStatus(campaign), pieces: [] } });
   });
 
-  app.post('/api/admin/campaigns/:id/media', { config: uploadRateLimit(uploadLimits) }, async (req, reply) => {
+  app.post('/api/admin/campaigns/:id/pieces', { config: uploadRateLimit(uploadLimits) }, async (req, reply) => {
     const params = parse(IdParams, req.params, reply);
     if (!params) return reply;
     const query = parse(MediaQuery, req.query, reply);
@@ -61,12 +72,25 @@ export const adminCampaignRoutes: FastifyPluginAsync<{ db: Db; storage?: LocalSt
     if (!storage || !uploadLimits) return reply.code(503).send({ error: 'storage_unavailable' });
     const c = await load(params.id);
     if (!c) return reply.code(404).send({ error: 'not_found' });
+    if (c.status === 'cancelled') return reply.code(409).send({ error: 'invalid_state' });
     const upload = await receiveUpload(req, storage, uploadLimits);
     if (!upload.ok) return reply.code(upload.status).send({ error: upload.error });
-    const result = await attachMedia(db, storage, c, upload, { allowedStatuses: ['approved'], displaySeconds: query.displaySeconds });
-    if (result === 'invalid_display_seconds') return reply.code(400).send({ error: 'invalid_request' });
-    if (!result) return reply.code(409).send({ error: 'invalid_state' });
-    return reply.code(201).send({ media: result });
+    const result = await addPiece(db, storage, c, upload, {
+      status: 'approved', actorUserId: req.user!.id, displaySeconds: query.displaySeconds,
+    });
+    return sendPieceResult(reply, result);
+  });
+
+  app.post('/api/admin/campaigns/:id/pieces/:pieceId/remove', async (req, reply) => {
+    const params = parse(PieceParams, req.params, reply);
+    if (!params) return reply;
+    const c = await load(params.id);
+    if (!c) return reply.code(404).send({ error: 'not_found' });
+    const piece = await changePiece(db, {
+      campaignId: c.id, pieceId: params.pieceId, from: ['approved'], to: 'removed', action: 'piece_removed', actorUserId: req.user!.id,
+    });
+    if (!piece) return reply.code(404).send({ error: 'not_found' });
+    return { piece };
   });
 
   app.post('/api/admin/campaigns/:id/cancel', async (req, reply) => {
@@ -75,7 +99,7 @@ export const adminCampaignRoutes: FastifyPluginAsync<{ db: Db; storage?: LocalSt
     const c = await load(params.id);
     if (!c) return reply.code(404).send({ error: 'not_found' });
     const campaign = await transition(db, {
-      id: c.id, from: ['approved'], to: 'cancelled', action: 'cancelled', actorUserId: req.user!.id,
+      id: c.id, from: ['active', 'paused'], to: 'cancelled', action: 'cancelled', actorUserId: req.user!.id,
     });
     if (!campaign) return reply.code(409).send({ error: 'invalid_state' });
     return { campaign: withStatus(campaign) };

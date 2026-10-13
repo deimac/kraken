@@ -21,11 +21,8 @@ async function campaignWithImage(name: string, approve: boolean) {
     advertiserId: adv, planId: plan, name, startsAt: '2026-01-01T00:00:00Z', endsAt: '2030-01-01T00:00:00Z',
   })).json().campaign.id;
   const m = multipart({ filename: 'a.png', contentType: 'image/png', data: PNG_BYTES });
-  const media = (await t.app.inject({ method: 'POST', url: `/api/campaigns/${id}/media`, headers: { cookie: s.gerenteA, ...m.headers }, payload: m.payload })).json().media.id;
-  if (approve) {
-    await req('POST', `/api/campaigns/${id}/submit`, s.gerenteA);
-    await req('POST', `/api/campaigns/${id}/approve`, s.gerenteA);
-  }
+  const media = (await t.app.inject({ method: 'POST', url: `/api/campaigns/${id}/pieces`, headers: { cookie: s.gerenteA, ...m.headers }, payload: m.payload })).json().piece.id;
+  if (!approve) await req('POST', `/api/campaigns/${id}/pause`, s.gerenteA);
   return { id, media };
 }
 
@@ -76,14 +73,14 @@ describe('player manifest', () => {
 });
 
 describe('player media access', () => {
-  it('serves eligible media to the TV but not drafts', async () => {
+  it('serves eligible media to the TV but not paused subscriptions', async () => {
     expect((await req('GET', `/api/media/${approvedMedia}`, tv)).statusCode).toBe(200);
     expect((await req('GET', `/api/media/${draftMedia}`, tv)).statusCode).toBe(404);
     expect((await req('GET', `/api/media/${draftMedia}`, s.gerenteA)).statusCode).toBe(200);
   });
 
   it('stops serving media once the campaign is cancelled', async () => {
-    const [c] = await t.db.select().from(campaigns).where(eq(campaigns.currentMediaId, approvedMedia));
+    const [c] = await t.db.select().from(campaigns).where(eq(campaigns.name, 'Aprovada'));
     await req('POST', `/api/campaigns/${c!.id}/cancel`, s.gerenteA);
     expect((await req('GET', `/api/media/${approvedMedia}`, tv)).statusCode).toBe(404);
   });

@@ -13,7 +13,7 @@ async function campaign(partnerId: string | null, name: string, advertiserId: st
   let planId: string | null = null;
   if (partnerId) planId = (await t.db.insert(plans).values({ partnerId, name: 'P', frequencyLevel: 'low' }).returning())[0]!.id;
   const [c] = await t.db.insert(campaigns).values({
-    kind: partnerId ? 'commercial' : 'institutional', partnerId, advertiserId, planId, name, status: 'approved',
+    kind: partnerId ? 'commercial' : 'institutional', partnerId, advertiserId, planId, name, status: 'active',
     frequencyLevel: 'low', startsAt: new Date('2026-01-01'), endsAt: new Date('2030-01-01'),
   }).returning();
   const [m] = await t.db.insert(media).values({

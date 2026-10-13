@@ -36,6 +36,8 @@ export type UploadOk = {
   sizeBytes: number;
   sha256: string;
   durationMs: number | null;
+  /** Name the file had on the uploader's device, for people to recognise the piece. */
+  originalName: string | null;
 };
 export type UploadFail = { ok: false; status: 400 | 413 | 415 | 507; error: string };
 
@@ -85,7 +87,8 @@ export async function receiveUpload(
   const fh = await open(tmpPath, 'r');
   await fh.read(head, 0, 16, 0);
   await fh.close();
-  const base = { ok: true as const, tmpPath, sizeBytes: size, sha256: hash.digest('hex') };
+  const originalName = part.filename ? [...part.filename].filter((ch) => ch >= ' ').join('').trim().slice(0, 120) || null : null;
+  const base = { ok: true as const, tmpPath, sizeBytes: size, sha256: hash.digest('hex'), originalName };
 
   const imageMime = detectImageMime(head);
   if (imageMime) {

@@ -8,7 +8,7 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import { expect, it } from 'vitest';
 
 const id = (n: number) => `0190a000-0000-7000-8000-${String(n).padStart(12, '0')}`;
-const [P, PLAN, ADV, U, C1, C2, C3, M1, M2, M3] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(id);
+const [P, PLAN, ADV, U, C1, C2, C3, M1, M2, M3] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(id) as [string, string, string, string, string, string, string, string, string, string];
 
 // Production has campaigns with a current media and older replaced media, reviews and plays when 0008 runs.
 it('0008 turns campaigns into subscriptions with pieces, keeping plays', async () => {

@@ -23,9 +23,7 @@ async function approvedCampaign(cookie: string, name: string) {
     advertiserId: adv, planId: plan, name, startsAt: '2026-01-01T00:00:00Z', endsAt: '2030-01-01T00:00:00Z',
   })).json().campaign.id;
   const m = multipart({ filename: 'a.png', contentType: 'image/png', data: PNG_BYTES });
-  const media = (await t.app.inject({ method: 'POST', url: `/api/campaigns/${id}/media`, headers: { cookie, ...m.headers }, payload: m.payload })).json().media.id;
-  await req('POST', `/api/campaigns/${id}/submit`, cookie);
-  await req('POST', `/api/campaigns/${id}/approve`, cookie);
+  const media = (await t.app.inject({ method: 'POST', url: `/api/campaigns/${id}/pieces`, headers: { cookie, ...m.headers }, payload: m.payload })).json().piece.id;
   return { id, media };
 }
 
@@ -43,7 +41,7 @@ beforeAll(async () => {
     name: 'Inst', frequencyLevel: 'low', startsAt: '2026-01-01T00:00:00Z', endsAt: '2030-01-01T00:00:00Z',
   })).json().campaign.id;
   const m = multipart({ filename: 'i.png', contentType: 'image/png', data: PNG_BYTES });
-  inst = { id: ic, media: (await t.app.inject({ method: 'POST', url: `/api/admin/campaigns/${ic}/media`, headers: { cookie: s.admin, ...m.headers }, payload: m.payload })).json().media.id };
+  inst = { id: ic, media: (await t.app.inject({ method: 'POST', url: `/api/admin/campaigns/${ic}/pieces`, headers: { cookie: s.admin, ...m.headers }, payload: m.payload })).json().piece.id };
   await t.db.update(partners).set({ showInstitutional: true }).where(eq(partners.id, s.partnerA.id));
   await req('PUT', '/api/partner/player-account', s.gerenteA, { password: 'senha-tv-123' });
   await req('PUT', '/api/partner/player-account', s.gerenteB, { password: 'senha-tv-456' });
