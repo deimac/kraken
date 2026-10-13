@@ -22,6 +22,7 @@ describe('public partner page', () => {
     expect(res.json().partner).toEqual({ name: 'Parceiro parceiro-a', slug: 'parceiro-a' });
     expect(res.json().plans.map((p: { name: string }) => p.name)).toEqual(['Bronze']);
     expect(res.json().plans[0].partnerId).toBeUndefined();
+    expect(res.json().plans[0]).toMatchObject({ priceCents: 0, periodMonths: 1, maxVideos: 1, maxImages: 1, maxVideoSeconds: 30 });
   });
 
   it('is 404 for unknown or inactive partners', async () => {

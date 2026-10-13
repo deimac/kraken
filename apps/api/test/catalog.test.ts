@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { advertisers, campaigns, media, plans, plays, users } from '../src/db/schema';
 import { createTestApp, seed } from './helpers/app';
-import { createUser, login } from './helpers/fixtures';
+import { createUser, login, pj } from './helpers/fixtures';
 
 let t: Awaited<ReturnType<typeof createTestApp>>;
 let s: Awaited<ReturnType<typeof seed>>;
@@ -162,6 +162,40 @@ describe('plans', () => {
     expect((await req('PATCH', `/api/partner/plans/${id}`, s.gerenteA, { active: false })).json().plan.active).toBe(false);
     expect((await req('PATCH', `/api/partner/plans/${id}`, s.gerenteB, { active: true })).statusCode).toBe(404);
     expect((await req('POST', '/api/partner/plans', s.gerenteA, { name: 'X', frequencyLevel: 'max' })).statusCode).toBe(400);
+  });
+});
+
+describe('plan limits and pricing', () => {
+  it('stores limits, price and period with defaults for omitted fields', async () => {
+    const res = await req('POST', '/api/partner/plans', s.gerenteA, {
+      name: 'Vitrine', frequencyLevel: 'medium', maxVideos: 2, maxImages: 3, maxVideoSeconds: 30, priceCents: 30000, periodMonths: 6,
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().plan).toMatchObject({ maxVideos: 2, maxImages: 3, maxVideoSeconds: 30, priceCents: 30000, periodMonths: 6 });
+    const plain = await req('POST', '/api/partner/plans', s.gerenteA, { name: 'Simples', frequencyLevel: 'low' });
+    expect(plain.json().plan).toMatchObject({ maxVideos: 1, maxImages: 1, maxVideoSeconds: 30, priceCents: 0, periodMonths: 1 });
+  });
+
+  it('rejects invalid limits, considering saved values on PATCH', async () => {
+    expect((await req('POST', '/api/partner/plans', s.gerenteA, { name: 'Z', frequencyLevel: 'low', maxVideos: 0, maxImages: 0 })).json().error).toBe('invalid_limits');
+    expect((await req('POST', '/api/partner/plans', s.gerenteA, { name: 'Z', frequencyLevel: 'low', periodMonths: 2 })).statusCode).toBe(400);
+    expect((await req('POST', '/api/partner/plans', s.gerenteA, { name: 'Z', frequencyLevel: 'low', maxVideoSeconds: 3 })).statusCode).toBe(400);
+    const id = (await req('POST', '/api/partner/plans', s.gerenteA, { name: 'Só vídeo', frequencyLevel: 'low', maxVideos: 1, maxImages: 0 })).json().plan.id;
+    expect((await req('PATCH', `/api/partner/plans/${id}`, s.gerenteA, { maxVideos: 0 })).json().error).toBe('invalid_limits');
+    expect((await req('PATCH', `/api/partner/plans/${id}`, s.gerenteA, { name: 'Só vídeo 2' })).json().plan.name).toBe('Só vídeo 2');
+  });
+
+  it('archives and unarchives, hiding archived plans from new campaigns', async () => {
+    const id = (await req('POST', '/api/partner/plans', s.gerenteA, { name: 'Arquivável', frequencyLevel: 'low' })).json().plan.id;
+    expect((await req('POST', `/api/partner/plans/${id}/archive`, s.gerenteA)).json().plan.active).toBe(false);
+    expect((await req('POST', `/api/partner/plans/${id}/archive`, s.gerenteB)).statusCode).toBe(404);
+    const adv = (await req('POST', '/api/partner/advertisers', s.gerenteA, { name: 'Adv plano', ...pj() })).json().advertiser.id;
+    const now = Date.now();
+    const camp = await req('POST', '/api/campaigns', s.gerenteA, {
+      advertiserId: adv, planId: id, name: 'X', startsAt: new Date(now).toISOString(), endsAt: new Date(now + 864e5).toISOString(),
+    });
+    expect(camp.json().error).toBe('invalid_plan');
+    expect((await req('POST', `/api/partner/plans/${id}/unarchive`, s.gerenteA)).json().plan.active).toBe(true);
   });
 });
 

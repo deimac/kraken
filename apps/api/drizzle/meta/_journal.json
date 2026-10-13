@@ -50,6 +50,13 @@
       "when": 1791847951479,
       "tag": "0006_advertisers_details",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791850127876,
+      "tag": "0007_plans_limits",
+      "breakpoints": true
     }
   ]
 }

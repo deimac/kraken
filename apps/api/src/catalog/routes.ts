@@ -36,15 +36,29 @@ const UpdateAdvertiser = z.object({ ...AdvertiserFields, document: Digits.nullab
 const ListQuery = z.object({ q: z.string().trim().max(120).optional(), archived: z.enum(['0', '1']).optional() });
 const DOCUMENT_UQ = 'advertisers_partner_document_uq';
 
+const Limit = z.number().int().min(0).max(50);
 const PlanFields = {
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(2000).optional(),
   frequencyLevel: z.enum(FREQUENCY_LEVELS),
+  maxVideos: Limit.optional(),
+  maxImages: Limit.optional(),
+  maxVideoSeconds: z.number().int().min(5).max(300).optional(),
+  priceCents: z.number().int().min(0).max(100_000_000).optional(),
+  periodMonths: z.union([z.literal(1), z.literal(3), z.literal(6), z.literal(12)]).optional(),
 };
+// Schema defaults (1 video, 1 image) apply when a limit is omitted on create.
+const validLimits = (videos: number, images: number) => videos + images > 0;
 const CreatePlan = z.object(PlanFields).strict();
 const UpdatePlan = z.object({ ...PlanFields, active: z.boolean() }).partial().strict();
 
 const IdParams = z.object({ id: z.uuid() });
+
+export const PUBLIC_PLAN = {
+  id: plans.id, name: plans.name, description: plans.description, frequencyLevel: plans.frequencyLevel,
+  maxVideos: plans.maxVideos, maxImages: plans.maxImages, maxVideoSeconds: plans.maxVideoSeconds,
+  priceCents: plans.priceCents, periodMonths: plans.periodMonths,
+};
 
 export const catalogRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db }) => {
   const partnerOnly = { preHandler: requireRole('partner_user') };
@@ -187,6 +201,7 @@ export const catalogRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db })
   app.post('/api/partner/plans', partnerOnly, async (req, reply) => {
     const body = parse(CreatePlan, req.body, reply);
     if (!body) return reply;
+    if (!validLimits(body.maxVideos ?? 1, body.maxImages ?? 1)) return reply.code(400).send({ error: 'invalid_limits' });
     const [plan] = await db.insert(plans).values({ ...body, partnerId: req.user!.partnerId! }).returning();
     return reply.code(201).send({ plan });
   });
@@ -196,18 +211,33 @@ export const catalogRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db })
     if (!params) return reply;
     const body = parse(UpdatePlan, req.body, reply);
     if (!body) return reply;
-    const [plan] = await db
-      .update(plans)
-      .set({ ...body, updatedAt: new Date() })
-      .where(and(eq(plans.id, params.id), eq(plans.partnerId, req.user!.partnerId!)))
-      .returning();
-    if (!plan) return reply.code(404).send({ error: 'not_found' });
+    const ownPlan = and(eq(plans.id, params.id), eq(plans.partnerId, req.user!.partnerId!));
+    const [current] = await db.select().from(plans).where(ownPlan);
+    if (!current) return reply.code(404).send({ error: 'not_found' });
+    if (!validLimits(body.maxVideos ?? current.maxVideos, body.maxImages ?? current.maxImages)) {
+      return reply.code(400).send({ error: 'invalid_limits' });
+    }
+    const [plan] = await db.update(plans).set({ ...body, updatedAt: new Date() }).where(ownPlan).returning();
     return { plan };
   });
 
+  for (const action of ['archive', 'unarchive'] as const) {
+    app.post(`/api/partner/plans/:id/${action}`, partnerOnly, async (req, reply) => {
+      const params = parse(IdParams, req.params, reply);
+      if (!params) return reply;
+      const [plan] = await db
+        .update(plans)
+        .set({ active: action === 'unarchive', updatedAt: new Date() })
+        .where(and(eq(plans.id, params.id), eq(plans.partnerId, req.user!.partnerId!)))
+        .returning();
+      if (!plan) return reply.code(404).send({ error: 'not_found' });
+      return { plan };
+    });
+  }
+
   app.get('/api/advertiser/plans', { preHandler: requireRole('advertiser') }, async (req) => ({
     plans: await db
-      .select({ id: plans.id, name: plans.name, description: plans.description, frequencyLevel: plans.frequencyLevel })
+      .select(PUBLIC_PLAN)
       .from(plans)
       .where(and(eq(plans.partnerId, req.user!.partnerId!), eq(plans.active, true)))
       .orderBy(asc(plans.name)),

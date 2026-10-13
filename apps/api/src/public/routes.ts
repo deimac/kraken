@@ -7,6 +7,7 @@ import { createSession } from '../auth/sessions';
 import type { Db } from '../db/client';
 import { isUniqueViolation } from '../db/errors';
 import { isValidDocument, onlyDigits } from '../catalog/document';
+import { PUBLIC_PLAN } from '../catalog/routes';
 import { PERSON_TYPES, advertisers, partners, plans, users } from '../db/schema';
 import { parse } from '../http/validation';
 
@@ -41,7 +42,7 @@ export const publicRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean }>
     const partner = await activePartner(params.slug);
     if (!partner) return reply.code(404).send({ error: 'not_found' });
     const list = await db
-      .select({ id: plans.id, name: plans.name, description: plans.description, frequencyLevel: plans.frequencyLevel })
+      .select(PUBLIC_PLAN)
       .from(plans)
       .where(and(eq(plans.partnerId, partner.id), eq(plans.active, true)))
       .orderBy(asc(plans.name));

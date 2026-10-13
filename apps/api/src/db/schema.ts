@@ -134,11 +134,20 @@ export const plans = pgTable(
     name: text('name').notNull(),
     description: text('description').notNull().default(''),
     frequencyLevel: text('frequency_level', { enum: FREQUENCY_LEVELS }).notNull(),
-    active: boolean('active').notNull().default(true),
+    active: boolean('active').notNull().default(true), // false = archived
+    maxVideos: integer('max_videos').notNull().default(1),
+    maxImages: integer('max_images').notNull().default(1),
+    maxVideoSeconds: integer('max_video_seconds').notNull().default(30),
+    priceCents: integer('price_cents').notNull().default(0),
+    periodMonths: integer('period_months').notNull().default(1),
     ...timestamps,
   },
   (t) => [
     check('plans_frequency_check', sql`${t.frequencyLevel} in ('low', 'medium', 'high')`),
+    check('plans_limits_check', sql`${t.maxVideos} between 0 and 50 and ${t.maxImages} between 0 and 50 and ${t.maxVideos} + ${t.maxImages} > 0`),
+    check('plans_video_seconds_check', sql`${t.maxVideoSeconds} between 5 and 300`),
+    check('plans_price_check', sql`${t.priceCents} >= 0`),
+    check('plans_period_check', sql`${t.periodMonths} in (1, 3, 6, 12)`),
     index('plans_partner_idx').on(t.partnerId),
   ],
 );
