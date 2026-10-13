@@ -15,6 +15,10 @@ export interface Screen {
   freezeVideo?(): void;
   /** Downloads a video's file ahead (no decoding) so it can start right after the current video. */
   prefetch?(item: Item): void;
+  /** Codecs of the server's TV-optimized videos (MediaSource sequence playback). */
+  setTvCodecs?(codecs: string | undefined): void;
+  /** True when `next` can follow `current` on the same video decoder (MediaSource), with no gap. */
+  canChain?(current: Item, next: Item): boolean;
 }
 
 interface Deps {
@@ -29,7 +33,7 @@ interface Deps {
 /** Identity of what the rotation depends on; polls returning the same content keep the rotation. */
 function signature(m: Manifest): string {
   const w = m.partner.weights;
-  return [w.low, w.medium, w.high, ...m.items.map((i) => `${i.campaignId}:${i.media.id}:${i.frequencyLevel}`)].join('|');
+  return [w.low, w.medium, w.high, ...m.items.map((i) => `${i.campaignId}:${i.media.id}:${i.frequencyLevel}:${i.media.tvUrl ? 'tv' : ''}`)].join('|');
 }
 
 /** Plays ads forever, always preloading the next one while the current one is on screen. */
@@ -56,6 +60,7 @@ export async function runPlayer(deps: Deps): Promise<void> {
         screen.setTransition(m.partner.transition, m.partner.transitionMs);
       }
       source = m;
+      screen.setTvCodecs?.(m.tvCodecs);
       const sig = signature(m);
       if (sig !== sourceSignature) {
         sourceSignature = sig;
@@ -94,7 +99,8 @@ export async function runPlayer(deps: Deps): Promise<void> {
     const next = rotation!.next()!;
     // Fire TV and many TVs decode one video at a time: loading the next video while one plays turns both black.
     // Video after video waits for the first to end (its last frame stays on screen); images load meanwhile.
-    const oneDecoder = current.item.media.mediaType === 'video' && next.media.mediaType === 'video';
+    const oneDecoder =
+      current.item.media.mediaType === 'video' && next.media.mediaType === 'video' && !screen.canChain?.(current.item, next);
     if (oneDecoder) screen.prefetch?.(next);
     else pending = { item: next, ready: screen.preload(next) };
     const result = await playing;

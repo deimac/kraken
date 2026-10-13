@@ -37,6 +37,8 @@ export interface Campaign {
 export interface Piece {
   id: string; mediaType: 'image' | 'video'; mime: string; durationMs: number | null; displaySeconds: number | null;
   status: PieceStatus; reviewReason: string | null; originalName: string | null; createdAt: string;
+  /** Videos: TV-optimized copy ready (smooth back-to-back playback), or why it failed. */
+  tvReady?: boolean; tvError?: string | null;
 }
 export interface Review { action: string; reason: string | null; mediaId: string | null; createdAt: string }
 export interface CampaignDetail {

@@ -15,7 +15,7 @@ const plan = {
 };
 const piece = (o: object = {}) => ({
   id: 'm1', mediaType: 'video', mime: 'video/mp4', durationMs: 15000, displaySeconds: null, status: 'approved', reviewReason: null,
-  originalName: 'jeep.mp4', createdAt: '2026-11-01T12:00:00Z', ...o,
+  originalName: 'jeep.mp4', createdAt: '2026-11-01T12:00:00Z', tvReady: true, tvError: null, ...o,
 });
 const detail = (o: object = {}) => ({
   campaign: sub(), plan, usage: { videos: 1, images: 1 }, totalPlays: 128,
@@ -86,6 +86,7 @@ describe('subscription page (partner)', () => {
     expect(screen.getByText('Imagens').parentElement!.textContent).toContain('1/1');
     expect(screen.getByText('128')).toBeTruthy();
     expect(screen.getByText('jeep.mp4')).toBeTruthy();
+    expect(screen.getByText('Otimizado para TV')).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Aprovar banner.png' }));
     expect(calls.some((c) => c.path === '/api/campaigns/c1/pieces/m2/approve')).toBe(true);
     await userEvent.click(screen.getByRole('button', { name: 'Recusar banner.png' }));

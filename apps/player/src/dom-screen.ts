@@ -1,9 +1,10 @@
 import type { PlayResult, Screen } from './player';
+import { MseSession, mseSupported, type Segment } from './mse-sequence';
 import type { Item, Transition } from './types';
 
 /** Something that went wrong on this TV, sent to the panel for diagnosis. */
 export interface ScreenIssue {
-  kind: 'load_timeout' | 'load_error' | 'image_error' | 'play_rejected' | 'stalled' | 'video_error';
+  kind: 'load_timeout' | 'load_error' | 'image_error' | 'play_rejected' | 'stalled' | 'video_error' | 'mse_error';
   mediaId?: string;
   detail?: string;
 }
@@ -12,6 +13,8 @@ interface Layer {
   el: HTMLDivElement;
   video: HTMLVideoElement;
   img: HTMLImageElement;
+  /** Set while the layer's video is fed by a MediaSource (TV-optimized ads appended back to back). */
+  mse?: MseSession;
 }
 
 const MAX_PREFETCH_BYTES = 80 * 1024 * 1024;
@@ -33,6 +36,9 @@ export class DomScreen implements Screen {
   private readonly onIssue: (issue: ScreenIssue) => void;
   /** mediaId → object URL of a video downloaded ahead (at most a couple, to spare the TV's memory). */
   private readonly prefetched = new Map<string, Promise<string | null>>();
+  private tvCodecs: string | undefined;
+  /** Ad appended to the MediaSource already on screen: present() keeps the same layer and decoder. */
+  private chained: string | null = null;
 
   constructor(
     root: HTMLElement,
@@ -82,10 +88,74 @@ export class DomScreen implements Screen {
     this.waiting.classList.toggle('hidden', !on);
   }
 
+  setTvCodecs(codecs: string | undefined): void {
+    this.tvCodecs = codecs;
+  }
+
+  /** True when `next` can be appended to the video now on screen, so it needs no second decoder. */
+  canChain(current: Item, next: Item): boolean {
+    return (
+      mseSupported(this.tvCodecs) &&
+      !!current.media.tvUrl &&
+      !!next.media.tvUrl &&
+      !!this.layers[this.active]!.mse?.usable
+    );
+  }
+
+  /** Downloads the TV copy and appends it to the layer's MediaSource; false (and reported) when it fails. */
+  private async appendTo(layer: Layer, item: Item): Promise<boolean> {
+    try {
+      const res = await withTimeout(fetch(item.media.tvUrl!, { credentials: 'same-origin' }), this.loadTimeoutMs, null);
+      if (!res?.ok) throw new Error(`download ${res?.status ?? 'timeout'}`);
+      const segment = await layer.mse!.append(item.media.id, await res.arrayBuffer());
+      if (!segment) throw new Error('append refused');
+      return true;
+    } catch (err) {
+      this.onIssue({ kind: 'mse_error', mediaId: item.media.id, detail: (err as Error).message });
+      this.dropMse(layer);
+      return false;
+    }
+  }
+
+  private dropMse(layer: Layer): void {
+    layer.mse?.destroy();
+    layer.mse = undefined;
+    this.releaseVideo(layer.video);
+  }
+
+  /** TV-optimized video through MediaSource: appended to the ad on screen when possible, else to the hidden layer. */
+  private async preloadMse(item: Item): Promise<boolean> {
+    const onScreen = this.layers[this.active]!;
+    if (onScreen.mse?.usable && !onScreen.video.paused && onScreen.video.classList.contains('show')) {
+      if (await this.appendTo(onScreen, item)) {
+        this.chained = item.media.id;
+        return true;
+      }
+      return false;
+    }
+    const layer = this.layers[1 - this.active]!;
+    layer.img.removeAttribute('src');
+    if (!layer.mse?.usable) {
+      this.dropMse(layer);
+      layer.mse = new MseSession(layer.video, this.tvCodecs!);
+    }
+    if (!(await this.appendTo(layer, item))) return false;
+    const segment = layer.mse!.next(item.media.id)!;
+    if (layer.video.readyState < 3) {
+      await withTimeout(new Promise((r) => layer.video.addEventListener('canplay', r, { once: true })), this.loadTimeoutMs, null);
+    }
+    return layer.video.readyState >= 2 || segment !== undefined;
+  }
+
   async preload(item: Item): Promise<boolean> {
     await this.freeAt; // never touch the layer that is still transitioning out
+    if (item.media.mediaType === 'video' && item.media.tvUrl && mseSupported(this.tvCodecs)) {
+      if (await this.preloadMse(item)) return true;
+      // MediaSource refused it: fall back to the uploaded file, one video at a time.
+    }
     const layer = this.layers[1 - this.active]!;
-    this.release(layer);
+    if (item.media.mediaType === 'image' && layer.mse?.usable) layer.img.removeAttribute('src');
+    else this.release(layer);
     if (item.media.mediaType === 'image') {
       const img = layer.img;
       const loaded = new Promise<boolean>((resolve) => {
@@ -135,6 +205,17 @@ export class DomScreen implements Screen {
   }
 
   async present(item: Item): Promise<PlayResult> {
+    if (this.chained === item.media.id) {
+      // Already appended after the ad on screen: same layer, same decoder, no reload.
+      this.chained = null;
+      const layer = this.layers[this.active]!;
+      const segment = layer.mse?.next(item.media.id);
+      if (!segment) return 'failed';
+      const t = layer.video.currentTime;
+      if (t < segment.start - 0.25 || t > segment.end) layer.video.currentTime = segment.start;
+      if (layer.video.paused) await layer.video.play().catch(() => undefined);
+      return this.watchSegment(layer, segment);
+    }
     const previous = this.active;
     const nextIndex = 1 - previous;
     const incoming = this.layers[nextIndex]!;
@@ -149,8 +230,9 @@ export class DomScreen implements Screen {
     const isVideo = item.media.mediaType === 'video';
     incoming.video.classList.toggle('show', isVideo);
     incoming.img.classList.toggle('show', !isVideo);
+    const segment = isVideo ? incoming.mse?.next(item.media.id) : undefined;
     if (isVideo) {
-      incoming.video.currentTime = 0;
+      incoming.video.currentTime = segment ? segment.start : 0;
       try {
         await incoming.video.play();
       } catch (err) {
@@ -167,8 +249,10 @@ export class DomScreen implements Screen {
     outgoing.el.classList.add('out');
     void sleep(this.transitionMs + 50).then(() => {
       outgoing.el.classList.remove('out');
-      // Fully unload (not just pause): a paused video still holds the TV's only decoder.
-      if (outgoing.video.getAttribute('src')) this.releaseVideo(outgoing.video);
+      // Fully unload (not just pause): a paused video still holds the TV's only decoder. A MediaSource video is only
+      // paused: the next TV-optimized ad will be appended to it.
+      if (outgoing.mse) outgoing.video.pause();
+      else if (outgoing.video.getAttribute('src')) this.releaseVideo(outgoing.video);
       unlock();
     });
 
@@ -176,7 +260,39 @@ export class DomScreen implements Screen {
       await sleep((item.media.displaySeconds ?? 10) * 1000);
       return 'completed';
     }
+    if (segment) return this.watchSegment(incoming, segment);
     return this.watchVideo(incoming.video, item.media.id);
+  }
+
+  /** An ad inside a MediaSource ends when the playhead reaches its end (the stream itself goes on). */
+  private watchSegment(layer: Layer, segment: Segment): Promise<PlayResult> {
+    const video = layer.video;
+    const report = this.onIssue;
+    return new Promise((resolve) => {
+      let lastTime = video.currentTime;
+      let still = 0;
+      const tick = setInterval(() => {
+        if (video.currentTime >= segment.end - 0.12) return finish('completed');
+        still = video.currentTime === lastTime ? still + 100 : 0;
+        lastTime = video.currentTime;
+        if (still >= this.stallTimeoutMs) {
+          report({ kind: 'stalled', mediaId: segment.mediaId, detail: `mse at ${Math.round(video.currentTime)}s readyState=${video.readyState}` });
+          finish('failed');
+        }
+      }, 100);
+      const onError = () => {
+        report({ kind: 'video_error', mediaId: segment.mediaId, detail: `mse code=${video.error?.code ?? '?'}` });
+        finish('failed');
+      };
+      const finish = (result: PlayResult) => {
+        clearInterval(tick);
+        video.removeEventListener('error', onError);
+        segment.played = true;
+        layer.mse?.trimBefore(segment.start);
+        resolve(result);
+      };
+      video.addEventListener('error', onError);
+    });
   }
 
   private watchVideo(video: HTMLVideoElement, mediaId: string): Promise<PlayResult> {
@@ -254,7 +370,8 @@ export class DomScreen implements Screen {
 
   /** Frees the decoder of a layer that is not on screen. */
   private release(layer: Layer): void {
-    this.releaseVideo(layer.video);
+    if (layer.mse) this.dropMse(layer);
+    else this.releaseVideo(layer.video);
     layer.img.removeAttribute('src');
   }
 }

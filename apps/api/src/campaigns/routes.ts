@@ -72,6 +72,7 @@ export async function transition(
 export const PIECE = {
   id: media.id, mediaType: media.mediaType, mime: media.mime, durationMs: media.durationMs, displaySeconds: media.displaySeconds,
   status: media.status, reviewReason: media.reviewReason, originalName: media.originalName, createdAt: media.createdAt,
+  tvReady: sql<boolean>`${media.tvKey} is not null`, tvError: media.tvError,
 };
 
 /** Atomic piece status change + history row. Returns undefined when the piece is not in `from`. */

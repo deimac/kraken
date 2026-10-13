@@ -193,6 +193,11 @@ export function SubscriptionDetail({ base }: { base: Base }) {
                   {p.mediaType === 'image' ? `Imagem · ${p.displaySeconds} s na tela` : `Vídeo · ${Math.round((p.durationMs ?? 0) / 1000)} s`}
                 </span>
                 <span className={`chip chip-${p.status}`}>{PIECE_STATUS_LABEL[p.status]}</span>
+                {p.mediaType === 'video' && (
+                  <span className="muted" title={p.tvError ?? undefined}>
+                    {p.tvReady ? 'Otimizado para TV' : p.tvError ? 'Otimização para TV falhou (toca o original)' : 'Otimizando para TV…'}
+                  </span>
+                )}
                 {p.status === 'rejected' && p.reviewReason && <span className="muted">Motivo: {p.reviewReason}</span>}
                 <div className="actions">
                   {isPartner && p.status === 'pending_review' && (

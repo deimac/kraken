@@ -10,6 +10,9 @@ export interface MediaRef {
   sizeBytes: number;
   durationMs: number | null;
   displaySeconds: number | null;
+  /** TV-optimized copy (fragmented MP4 with the manifest's tvCodecs) and first-frame poster, when ready. */
+  tvUrl?: string;
+  posterUrl?: string;
 }
 
 export interface Item {
@@ -26,4 +29,6 @@ export interface Manifest {
   generatedAt: string;
   /** Server build; a change means a new player is available. */
   version?: string;
+  /** Codecs shared by every tvUrl: lets the player append them into one MediaSource buffer. */
+  tvCodecs?: string;
 }
