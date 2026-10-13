@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { digits, formatDocument, maskDocument, maskPhone, maskZip } from '../src/format';
+import { digits, formatDocument, formatPlanPrice, maskDocument, maskPhone, maskZip, planLimits } from '../src/format';
 
 describe('input masks', () => {
   it('masks CPF and CNPJ progressively', () => {
@@ -21,5 +21,19 @@ describe('input masks', () => {
     expect(formatDocument('52998224725')).toBe('529.982.247-25');
     expect(formatDocument('11222333000181')).toBe('11.222.333/0001-81');
     expect(formatDocument(null)).toBe('');
+  });
+});
+
+describe('plan formatting', () => {
+  it('formats price by period', () => {
+    expect(formatPlanPrice(30000, 1)).toMatch(/^R\$\s?300,00\/mês$/);
+    expect(formatPlanPrice(360000, 12)).toMatch(/^R\$\s?3\.600,00\/ano$/);
+    expect(formatPlanPrice(150000, 6)).toMatch(/^R\$\s?1\.500,00 por 6 meses$/);
+    expect(formatPlanPrice(0, 1)).toBe('Sob consulta');
+  });
+  it('describes limits', () => {
+    expect(planLimits({ maxVideos: 2, maxImages: 3, maxVideoSeconds: 30 })).toBe('Até 2 vídeos de até 30 s · até 3 imagens');
+    expect(planLimits({ maxVideos: 1, maxImages: 0, maxVideoSeconds: 15 })).toBe('Até 1 vídeo de até 15 s');
+    expect(planLimits({ maxVideos: 0, maxImages: 1, maxVideoSeconds: 30 })).toBe('Até 1 imagem');
   });
 });

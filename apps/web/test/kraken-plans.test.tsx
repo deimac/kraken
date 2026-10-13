@@ -31,6 +31,23 @@ describe('Kraken plans screen', () => {
     expect(await screen.findByText('Essencial')).toBeTruthy();
   });
 
+  it('edits a Kraken plan', async () => {
+    const calls = mockApi({
+      'GET /api/auth/me': { user: adminUser },
+      'GET /api/admin/kraken-plans': { plans: [{ id: 'mp1', name: 'Essencial', description: 'Básico', priceCents: 9900, active: true }] },
+      'PATCH /api/admin/kraken-plans/mp1': (b: unknown) => ({ plan: { id: 'mp1', active: true, description: 'Básico', priceCents: 9900, ...(b as object) } }),
+    });
+    renderAt('/admin/planos-kraken');
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar Essencial' }));
+    const price = screen.getByLabelText('Valor mensal de referência (R$)');
+    expect((price as HTMLInputElement).value).toBe('99,00');
+    await userEvent.clear(price);
+    await userEvent.type(price, '129,90');
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar plano' }));
+    expect(calls.find((c) => c.method === 'PATCH')!.body).toEqual({ name: 'Essencial', description: 'Básico', priceCents: 12990 });
+    expect(await screen.findByText(/129,90/)).toBeTruthy();
+  });
+
   it('assigns a Kraken plan in the partner editor', async () => {
     const partner = { id: 'p1', name: 'Ironberg', slug: 'ironberg', status: 'active', showInstitutional: false, weightLow: 1, weightMedium: 2, weightHigh: 3, defaultImageSeconds: 10, krakenPlanId: null };
     const calls = mockApi({

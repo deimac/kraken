@@ -2,7 +2,7 @@ import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { api, ApiError } from '../../api';
 import { useAuth } from '../../auth';
-import { FREQUENCY_LABEL, digits, maskDocument, maskPhone } from '../../format';
+import { FREQUENCY_LABEL, digits, formatPlanPrice, maskDocument, maskPhone, planLimits } from '../../format';
 import { errorMessage } from '../../messages';
 import { ThemeToggle } from '../../ThemeToggle';
 import type { PersonType, Plan, User } from '../../types';
@@ -71,12 +71,16 @@ export function PublicPartner() {
       <p className="muted">
         Seu anúncio nas TVs do estabelecimento. Escolha um plano, crie sua conta e envie sua campanha para aprovação.
       </p>
-      <div className="kpis">
+      <div className="plan-grid" style={{ marginBottom: 16 }}>
         {data.plans.map((p) => (
-          <div className="kpi" key={p.id}>
-            <strong style={{ fontSize: 16 }}>{p.name}</strong>
-            <span>Frequência {FREQUENCY_LABEL[p.frequencyLevel].toLowerCase()}</span>
-            {p.description && <span>{p.description}</span>}
+          <div className="plan-card" key={p.id}>
+            <div className="plan-head">
+              <strong>{p.name}</strong>
+              <span className="chip">Frequência {FREQUENCY_LABEL[p.frequencyLevel].toLowerCase()}</span>
+            </div>
+            <div className="plan-price">{formatPlanPrice(p.priceCents, p.periodMonths)}</div>
+            <div className="plan-limits">{planLimits(p)}</div>
+            {p.description && <p className="muted plan-desc">{p.description}</p>}
           </div>
         ))}
       </div>

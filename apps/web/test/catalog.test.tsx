@@ -96,26 +96,73 @@ describe('advertisers', () => {
   });
 });
 
+const plan = (o: object = {}) => ({
+  id: 'pl1', name: 'Ouro', description: 'Mais exibições', frequencyLevel: 'high', active: true,
+  maxVideos: 2, maxImages: 3, maxVideoSeconds: 30, priceCents: 30000, periodMonths: 1, ...o,
+});
+
 describe('ad plans', () => {
-  it('creates plans and toggles active', async () => {
+  it('shows plan cards with price and limits, and archives', async () => {
     const calls = mockApi({
       'GET /api/auth/me': { user: partnerUser },
-      'GET /api/partner/plans': { plans: [{ id: 'pl1', name: 'Ouro', description: '', frequencyLevel: 'high', active: true }] },
-      'POST /api/partner/plans': (b: unknown) => ({ plan: { id: 'pl2', active: true, description: '', ...(b as object) } }),
-      'PATCH /api/partner/plans/pl1': { plan: { id: 'pl1', name: 'Ouro', description: '', frequencyLevel: 'high', active: false } },
+      'GET /api/partner/plans': { plans: [plan(), plan({ id: 'pl2', name: 'Antigo', active: false })] },
+      'POST /api/partner/plans/pl1/archive': { plan: plan({ active: false }) },
     });
     renderAt('/parceiro/planos');
     expect(await screen.findByRole('heading', { name: 'Planos de anúncio' })).toBeTruthy();
     expect(await screen.findByText('Ouro')).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: 'Desativar Ouro' }));
-    expect(calls.find((c) => c.method === 'PATCH')!.body).toEqual({ active: false });
-    expect(await screen.findByRole('button', { name: 'Ativar Ouro' })).toBeTruthy();
+    expect(screen.getByText(/300,00\/mês/)).toBeTruthy();
+    expect(screen.getByText('Até 2 vídeos de até 30 s · até 3 imagens')).toBeTruthy();
+    expect(screen.queryByText('Antigo')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Arquivar Ouro' }));
+    expect(calls.some((c) => c.method === 'POST' && c.path === '/api/partner/plans/pl1/archive')).toBe(true);
+    await userEvent.click(screen.getByRole('button', { name: 'Arquivados' }));
+    expect(await screen.findByText('Antigo')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Reativar Ouro' })).toBeTruthy();
+  });
+
+  it('creates a plan with limits and price', async () => {
+    const calls = mockApi({
+      'GET /api/auth/me': { user: partnerUser },
+      'GET /api/partner/plans': { plans: [] },
+      'POST /api/partner/plans': (b: unknown) => reply(201, { plan: plan({ id: 'pl9', ...(b as object) }) }),
+    });
+    renderAt('/parceiro/planos');
+    await userEvent.click(await screen.findByRole('button', { name: 'Novo plano' }));
     await userEvent.type(screen.getByLabelText('Nome do plano'), 'Prata');
     await userEvent.selectOptions(screen.getByLabelText('Frequência'), 'medium');
+    await userEvent.clear(screen.getByLabelText('Vídeos'));
+    await userEvent.type(screen.getByLabelText('Vídeos'), '2');
+    await userEvent.clear(screen.getByLabelText('Imagens'));
+    await userEvent.type(screen.getByLabelText('Imagens'), '0');
+    await userEvent.type(screen.getByLabelText('Valor (R$)'), '1.250,50');
+    await userEvent.selectOptions(screen.getByLabelText('Período'), '3');
     await userEvent.click(screen.getByRole('button', { name: 'Criar plano' }));
-    expect(calls.find((c) => c.method === 'POST')!.body).toMatchObject({ name: 'Prata', frequencyLevel: 'medium' });
+    expect(calls.find((c) => c.method === 'POST')!.body).toEqual({
+      name: 'Prata', frequencyLevel: 'medium', maxVideos: 2, maxImages: 0, maxVideoSeconds: 30, priceCents: 125050, periodMonths: 3,
+    });
+    expect(await screen.findByText('Prata')).toBeTruthy();
+  });
+
+  it('edits a plan with PATCH', async () => {
+    const calls = mockApi({
+      'GET /api/auth/me': { user: partnerUser },
+      'GET /api/partner/plans': { plans: [plan()] },
+      'PATCH /api/partner/plans/pl1': (b: unknown) => ({ plan: plan(b as object) }),
+    });
+    renderAt('/parceiro/planos');
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar Ouro' }));
+    const name = screen.getByLabelText('Nome do plano');
+    expect((name as HTMLInputElement).value).toBe('Ouro');
+    expect((screen.getByLabelText('Valor (R$)') as HTMLInputElement).value).toBe('300,00');
+    await userEvent.clear(name);
+    await userEvent.type(name, 'Ouro Plus');
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar plano' }));
+    expect(calls.find((c) => c.method === 'PATCH')!.body).toMatchObject({ name: 'Ouro Plus', priceCents: 30000, maxVideos: 2 });
+    expect(await screen.findByText('Ouro Plus')).toBeTruthy();
   });
 });
+
 
 describe('TV account', () => {
   it('shows the TV login and sets a password', async () => {

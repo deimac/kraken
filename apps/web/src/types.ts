@@ -23,7 +23,10 @@ export interface AdvertiserDetail {
   advertiser: Advertiser; playsThisMonth: number;
   campaigns: { id: string; name: string; status: CampaignStatus; effectiveStatus: EffectiveStatus; startsAt: string; endsAt: string }[];
 }
-export interface Plan { id: string; name: string; description: string; frequencyLevel: FrequencyLevel; active?: boolean }
+export interface Plan {
+  id: string; name: string; description: string; frequencyLevel: FrequencyLevel; active?: boolean;
+  maxVideos: number; maxImages: number; maxVideoSeconds: number; priceCents: number; periodMonths: number;
+}
 export interface Campaign {
   id: string; kind: 'commercial' | 'institutional'; name: string; status: CampaignStatus; effectiveStatus: EffectiveStatus;
   startsAt: string; endsAt: string; frequencyLevel: FrequencyLevel; currentMediaId: string | null;

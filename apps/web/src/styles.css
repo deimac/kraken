@@ -148,3 +148,12 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .form-wide { max-width: 760px; }
 .form-row > *, .form-row-3 > * { min-width: 0; }
 .field input, .field select, .field textarea { width: 100%; box-sizing: border-box; }
+.plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.plan-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.plan-off { opacity: 0.7; }
+.plan-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.plan-head strong { font-size: 16px; }
+.plan-price { font-size: 20px; font-weight: 600; color: var(--accent); }
+.plan-limits { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.plan-desc { margin: 0; font-size: 13px; }
+.plan-card .actions { margin-top: auto; }

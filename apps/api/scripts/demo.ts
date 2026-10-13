@@ -68,8 +68,8 @@ await db.insert(schema.users).values([
 const [bronze, ouro] = await db
   .insert(schema.plans)
   .values([
-    { partnerId: partner!.id, name: 'Bronze', frequencyLevel: 'low', description: 'Presença básica' },
-    { partnerId: partner!.id, name: 'Ouro', frequencyLevel: 'high', description: 'Mais exibições' },
+    { partnerId: partner!.id, name: 'Bronze', frequencyLevel: 'low', description: 'Presença básica', maxVideos: 1, maxImages: 2, maxVideoSeconds: 15, priceCents: 15000, periodMonths: 1 },
+    { partnerId: partner!.id, name: 'Ouro', frequencyLevel: 'high', description: 'Mais exibições', maxVideos: 2, maxImages: 3, maxVideoSeconds: 30, priceCents: 360000, periodMonths: 12 },
   ])
   .returning();
 

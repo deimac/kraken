@@ -80,3 +80,24 @@ export function formatDocument(d: string | null): string {
   if (!d) return '';
   return maskDocument(d.length === 11 ? 'pf' : 'pj', d);
 }
+
+export const PERIOD_LABEL: Record<number, string> = { 1: 'Mensal', 3: 'Trimestral', 6: 'Semestral', 12: 'Anual' };
+
+/** "R$ 300,00/mês", "R$ 3.600,00/ano", "R$ 1.500,00 por 6 meses"; zero means "ask". */
+export function formatPlanPrice(cents: number, months: number): string {
+  if (cents === 0) return 'Sob consulta';
+  const value = BRL.format(cents / 100);
+  if (months === 1) return `${value}/mês`;
+  if (months === 12) return `${value}/ano`;
+  return `${value} por ${months} meses`;
+}
+
+export function planLimits(p: { maxVideos: number; maxImages: number; maxVideoSeconds: number }): string {
+  const parts: string[] = [];
+  if (p.maxVideos > 0) parts.push(`${p.maxVideos} ${p.maxVideos === 1 ? 'vídeo' : 'vídeos'} de até ${p.maxVideoSeconds} s`);
+  if (p.maxImages > 0) parts.push(`${p.maxImages} ${p.maxImages === 1 ? 'imagem' : 'imagens'}`);
+  return `Até ${parts.join(' · até ')}`;
+}
+
+/** 125050 → "1250,50" for editing in a money input. */
+export const centsToInput = (cents: number | null): string => (cents === null ? '' : (cents / 100).toFixed(2).replace('.', ','));

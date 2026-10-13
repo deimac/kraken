@@ -11,7 +11,7 @@ describe('public partner page', () => {
       'GET /api/auth/me': () => me,
       'GET /api/public/partners/ironberg': {
         partner: { name: 'Ironberg', slug: 'ironberg' },
-        plans: [{ id: 'pl1', name: 'Ouro', description: 'Mais exibições', frequencyLevel: 'high' }],
+        plans: [{ id: 'pl1', name: 'Ouro', description: 'Mais exibições', frequencyLevel: 'high', maxVideos: 2, maxImages: 0, maxVideoSeconds: 15, priceCents: 30000, periodMonths: 1 }],
       },
       'POST /api/public/partners/ironberg/advertisers': () => { me = { user: advertiserUser }; return reply(201, { user: advertiserUser }); },
       'GET /api/campaigns': { campaigns: [] },
@@ -19,6 +19,8 @@ describe('public partner page', () => {
     renderAt('/p/ironberg');
     expect(await screen.findByRole('heading', { name: 'Anuncie na Ironberg' })).toBeTruthy();
     expect(screen.getByText('Mais exibições')).toBeTruthy();
+    expect(screen.getByText(/300,00\/mês/)).toBeTruthy();
+    expect(screen.getByText('Até 2 vídeos de até 15 s')).toBeTruthy();
     await userEvent.type(screen.getByLabelText('Empresa'), 'Loja Fit');
     await userEvent.type(screen.getByLabelText('CNPJ'), '11222333000181');
     await userEvent.type(screen.getByLabelText('Seu nome'), 'Bia');
