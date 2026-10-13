@@ -64,6 +64,9 @@ export class MseSession {
       const sb = this.sourceBuffer;
       const start = this.segments.at(-1)?.end ?? 0;
       try {
+        if (sb.updating) await once(sb, 'updateend');
+        // In sequence mode this sets where the next coded frame group starts: right after the previous ad.
+        sb.timestampOffset = start;
         const done = Promise.race([once(sb, 'updateend').then(() => true), once(sb, 'error').then(() => false)]);
         sb.appendBuffer(bytes);
         if (!(await done)) throw new Error('append failed');
@@ -71,8 +74,11 @@ export class MseSession {
         this.broken = true;
         return null;
       }
-      // In sequence mode the offset moves to the end of what was just appended.
-      const end = sb.timestampOffset > start ? sb.timestampOffset : bufferedEnd(sb, start);
+      const end = bufferedEnd(sb, start);
+      if (end <= start) {
+        this.broken = true;
+        return null;
+      }
       const segment: Segment = { mediaId, start, end, played: false };
       this.segments.push(segment);
       return segment;
@@ -82,16 +88,26 @@ export class MseSession {
     return result;
   }
 
-  /** The first appended copy of this ad that has not been shown yet. */
-  next(mediaId: string): Segment | undefined {
-    return this.segments.find((s) => s.mediaId === mediaId && !s.played);
+  /** Playing `segment` now: anything appended before it is skipped (e.g. ads dropped by a manifest change). */
+  skipBefore(segment: Segment): void {
+    for (const s of this.segments) {
+      if (s === segment) break;
+      s.played = true;
+    }
+    const i = this.segments.indexOf(segment);
+    if (i > 5) this.segments.splice(0, i - 5);
+  }
+
+  /** Stops chaining onto this buffer (it stays on screen until its ad ends). */
+  disable(): void {
+    this.broken = true;
   }
 
   /** Drops what is well behind the playhead, to spare the TV's memory. */
   trimBefore(time: number): void {
     const sb = this.sourceBuffer;
     const until = time - 10;
-    if (!sb || until <= 0 || sb.updating) return;
+    if (!sb || until <= 0) return;
     this.chain = this.chain.then(async () => {
       if (sb.updating) await once(sb, 'updateend');
       try {

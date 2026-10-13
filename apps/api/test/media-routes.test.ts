@@ -1,6 +1,8 @@
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { media } from '../src/db/schema';
 import { createTestApp, multipart, seed } from './helpers/app';
 import { login, pj } from './helpers/fixtures';
 import { PNG_BYTES, buildMp4 } from './helpers/mp4';
@@ -140,5 +142,13 @@ describe('institutional campaigns', () => {
     const cookie = `kraken_session=${signup.cookies.find((c) => c.name === 'kraken_session')!.value}`;
     const detail = (await req('GET', `/api/campaigns/${campaignId}`, s.gerenteA)).json();
     expect((await req('GET', `/api/media/${detail.pieces[0].id}`, cookie)).statusCode).toBe(404);
+  });
+
+  it('answers 404 (not 500) when a TV copy is recorded but its file is missing', async () => {
+    const detail = (await req('GET', `/api/campaigns/${campaignId}`, s.gerenteA)).json();
+    const id = detail.pieces[0].id;
+    await t.db.update(media).set({ tvKey: 'nao/existe.tv.x.mp4', posterKey: 'nao/existe.jpg' }).where(eq(media.id, id));
+    expect((await req('GET', `/api/media/${id}/tv`, s.gerenteA)).statusCode).toBe(404);
+    expect((await req('GET', `/api/media/${id}/poster`, s.gerenteA)).statusCode).toBe(404);
   });
 });

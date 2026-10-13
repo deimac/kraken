@@ -18,6 +18,8 @@ describe('TV video arguments', () => {
     const withSound = tvVideoArgs('in.mp4', 'out.mp4', true).join(' ');
     expect(withSound).not.toContain('anullsrc');
     expect(withSound).toContain('-map 0:a:0');
+    expect(withSound).toContain('-af apad'); // short soundtracks must not cut the video (-shortest)
+    expect(silent).toContain('force_divisible_by=2');
   });
 });
 
@@ -68,7 +70,8 @@ describe.skipIf(!ffmpeg)('TV optimization with ffmpeg', () => {
     const tvLogin = await t.app.inject({ method: 'POST', url: '/api/player/login', payload: { email: 'tv@parceiro-a', password: 'senha-tv-123' } });
     const tvCookie = `kraken_tv=${tvLogin.cookies.find((x) => x.name === 'kraken_tv')!.value}`;
     const manifest = (await req('GET', '/api/player/manifest', tvCookie)).json();
-    expect(manifest.items[0].media).toMatchObject({ tvUrl: `/api/media/${id}/tv`, posterUrl: `/api/media/${id}/poster` });
+    expect(manifest.items[0].media.tvUrl).toMatch(new RegExp(`^/api/media/${id}/tv\\?v=\\w+$`));
+    expect(manifest.items[0].media.posterUrl).toBe(`/api/media/${id}/poster`);
     expect(manifest.tvCodecs).toBe('avc1.640028, mp4a.40.2');
   }, 120_000);
 });

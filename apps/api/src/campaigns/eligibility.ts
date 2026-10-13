@@ -17,6 +17,8 @@ export interface EligibleItem {
     displaySeconds: number | null;
     /** TV-optimized copy and poster, once ready (see media/tv-optimize.ts). */
     tvReady: boolean;
+    /** Changes whenever the TV copy is re-made (part of its URL, so caches never serve an old one). */
+    tvVersion: string | null;
     posterReady: boolean;
   };
 }
@@ -48,7 +50,7 @@ export async function listEligible(db: Db, partnerId: string, now: Date = new Da
     media: {
       id: r.mediaId, mediaType: r.mediaType, mime: r.mime, sha256: r.sha256, sizeBytes: r.sizeBytes,
       durationMs: r.durationMs, displaySeconds: r.displaySeconds,
-      tvReady: r.tvKey !== null, posterReady: r.posterKey !== null,
+      tvReady: r.tvKey !== null, tvVersion: r.tvKey?.split('.').at(-2) ?? null, posterReady: r.posterKey !== null,
     },
   }));
 }

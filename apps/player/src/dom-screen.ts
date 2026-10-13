@@ -37,8 +37,8 @@ export class DomScreen implements Screen {
   /** mediaId → object URL of a video downloaded ahead (at most a couple, to spare the TV's memory). */
   private readonly prefetched = new Map<string, Promise<string | null>>();
   private tvCodecs: string | undefined;
-  /** Ad appended to the MediaSource already on screen: present() keeps the same layer and decoder. */
-  private chained: string | null = null;
+  /** Where the last preloaded MediaSource ad sits; chained = appended to the video on screen (same layer). */
+  private prepared: { layer: Layer; segment: Segment; chained: boolean } | null = null;
 
   constructor(
     root: HTMLElement,
@@ -102,18 +102,29 @@ export class DomScreen implements Screen {
     );
   }
 
-  /** Downloads the TV copy and appends it to the layer's MediaSource; false (and reported) when it fails. */
-  private async appendTo(layer: Layer, item: Item): Promise<boolean> {
-    try {
-      const res = await withTimeout(fetch(item.media.tvUrl!, { credentials: 'same-origin' }), this.loadTimeoutMs, null);
-      if (!res?.ok) throw new Error(`download ${res?.status ?? 'timeout'}`);
+  /**
+   * Downloads the TV copy and appends it to the layer's MediaSource, all within the load timeout. On failure the
+   * buffer stops being used; if it is on screen it is left alone until its ad ends.
+   */
+  private async appendTo(layer: Layer, item: Item, onScreen: boolean): Promise<Segment | null> {
+    const abort = new AbortController();
+    const work = (async () => {
+      const res = await fetch(item.media.tvUrl!, { credentials: 'same-origin', signal: abort.signal });
+      if (!res.ok) throw new Error(`download ${res.status}`);
       const segment = await layer.mse!.append(item.media.id, await res.arrayBuffer());
       if (!segment) throw new Error('append refused');
-      return true;
+      return segment;
+    })();
+    try {
+      const segment = await withTimeout(work, this.loadTimeoutMs * 2, null);
+      if (!segment) throw new Error('timeout');
+      return segment;
     } catch (err) {
+      abort.abort();
       this.onIssue({ kind: 'mse_error', mediaId: item.media.id, detail: (err as Error).message });
-      this.dropMse(layer);
-      return false;
+      if (onScreen) layer.mse?.disable();
+      else this.dropMse(layer);
+      return null;
     }
   }
 
@@ -123,38 +134,62 @@ export class DomScreen implements Screen {
     this.releaseVideo(layer.video);
   }
 
+  /** The video on screen is busy decoding (TVs have a single decoder): nothing else may load meanwhile. */
+  private videoPlayingOnScreen(): boolean {
+    const v = this.layers[this.active]!.video;
+    return !!v.getAttribute('src') && !v.paused;
+  }
+
+  /** A paused video under an image on screen still holds the decoder: free it before loading another video. */
+  private freeIdleDecoder(): void {
+    const layer = this.layers[this.active]!;
+    if (!layer.video.getAttribute('src') || !layer.video.paused) return;
+    if (layer.mse) this.dropMse(layer);
+    else this.releaseVideo(layer.video);
+  }
+
   /** TV-optimized video through MediaSource: appended to the ad on screen when possible, else to the hidden layer. */
   private async preloadMse(item: Item): Promise<boolean> {
     const onScreen = this.layers[this.active]!;
-    if (onScreen.mse?.usable && !onScreen.video.paused && onScreen.video.classList.contains('show')) {
-      if (await this.appendTo(onScreen, item)) {
-        this.chained = item.media.id;
-        return true;
-      }
-      return false;
+    if (this.videoPlayingOnScreen()) {
+      if (!onScreen.mse?.usable) return false; // never a second decoder: wait for the next turn
+      const segment = await this.appendTo(onScreen, item, true);
+      if (!segment) return false;
+      this.prepared = { layer: onScreen, segment, chained: true };
+      return true;
     }
+    this.freeIdleDecoder();
     const layer = this.layers[1 - this.active]!;
     layer.img.removeAttribute('src');
     if (!layer.mse?.usable) {
       this.dropMse(layer);
       layer.mse = new MseSession(layer.video, this.tvCodecs!);
     }
-    if (!(await this.appendTo(layer, item))) return false;
-    const segment = layer.mse!.next(item.media.id)!;
+    const segment = await this.appendTo(layer, item, false);
+    if (!segment) return false;
+    layer.video.currentTime = segment.start; // the playhead must sit on the new data for canplay to fire
     if (layer.video.readyState < 3) {
       await withTimeout(new Promise((r) => layer.video.addEventListener('canplay', r, { once: true })), this.loadTimeoutMs, null);
     }
-    return layer.video.readyState >= 2 || segment !== undefined;
+    this.prepared = { layer, segment, chained: false };
+    return true;
   }
 
   async preload(item: Item): Promise<boolean> {
     await this.freeAt; // never touch the layer that is still transitioning out
-    if (item.media.mediaType === 'video' && item.media.tvUrl && mseSupported(this.tvCodecs)) {
+    this.prepared = null;
+    const isVideo = item.media.mediaType === 'video';
+    if (isVideo && item.media.tvUrl && mseSupported(this.tvCodecs)) {
       if (await this.preloadMse(item)) return true;
+      if (this.videoPlayingOnScreen()) return false;
       // MediaSource refused it: fall back to the uploaded file, one video at a time.
     }
+    if (isVideo) {
+      if (this.videoPlayingOnScreen()) return false; // a second decoder would black out the screen
+      this.freeIdleDecoder();
+    }
     const layer = this.layers[1 - this.active]!;
-    if (item.media.mediaType === 'image' && layer.mse?.usable) layer.img.removeAttribute('src');
+    if (!isVideo && layer.mse?.usable) layer.img.removeAttribute('src');
     else this.release(layer);
     if (item.media.mediaType === 'image') {
       const img = layer.img;
@@ -205,12 +240,12 @@ export class DomScreen implements Screen {
   }
 
   async present(item: Item): Promise<PlayResult> {
-    if (this.chained === item.media.id) {
+    const prepared = this.prepared?.segment.mediaId === item.media.id ? this.prepared : null;
+    this.prepared = null;
+    if (prepared?.chained) {
       // Already appended after the ad on screen: same layer, same decoder, no reload.
-      this.chained = null;
-      const layer = this.layers[this.active]!;
-      const segment = layer.mse?.next(item.media.id);
-      if (!segment) return 'failed';
+      const { layer, segment } = prepared;
+      layer.mse?.skipBefore(segment);
       const t = layer.video.currentTime;
       if (t < segment.start - 0.25 || t > segment.end) layer.video.currentTime = segment.start;
       if (layer.video.paused) await layer.video.play().catch(() => undefined);
@@ -230,7 +265,8 @@ export class DomScreen implements Screen {
     const isVideo = item.media.mediaType === 'video';
     incoming.video.classList.toggle('show', isVideo);
     incoming.img.classList.toggle('show', !isVideo);
-    const segment = isVideo ? incoming.mse?.next(item.media.id) : undefined;
+    const segment = isVideo && prepared?.layer === incoming ? prepared.segment : undefined;
+    if (segment) incoming.mse?.skipBefore(segment);
     if (isVideo) {
       incoming.video.currentTime = segment ? segment.start : 0;
       try {
@@ -251,7 +287,8 @@ export class DomScreen implements Screen {
       outgoing.el.classList.remove('out');
       // Fully unload (not just pause): a paused video still holds the TV's only decoder. A MediaSource video is only
       // paused: the next TV-optimized ad will be appended to it.
-      if (outgoing.mse) outgoing.video.pause();
+      if (outgoing.mse?.usable) outgoing.video.pause();
+      else if (outgoing.mse) this.dropMse(outgoing);
       else if (outgoing.video.getAttribute('src')) this.releaseVideo(outgoing.video);
       unlock();
     });
@@ -343,6 +380,10 @@ export class DomScreen implements Screen {
     const layer = this.layers[this.active]!;
     const video = layer.video;
     if (!video.getAttribute('src')) return;
+    if (layer.mse) {
+      this.dropMse(layer);
+      return;
+    }
     try {
       // Same-origin video: copy its last frame into the layer's image so the screen is not black while the next
       // video loads, and the transition goes from that frame to the new video.

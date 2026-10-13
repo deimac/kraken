@@ -14,12 +14,17 @@ class FakeSourceBuffer extends EventTarget {
   timestampOffset = 0;
   appended: number[] = [];
   removed: [number, number][] = [];
-  buffered = { length: 0, end: () => 0 };
+  fail = false;
+  private bufferedTo = 0;
+  buffered = { length: 0, end: () => this.bufferedTo };
   appendBuffer(bytes: ArrayBuffer) {
+    if (this.fail) throw new DOMException('full', 'QuotaExceededError');
     this.appended.push(bytes.byteLength);
     this.updating = true;
     queueMicrotask(() => {
-      this.timestampOffset += AD_SECONDS;
+      // Chromium sequence mode: frames go at the group start; timestampOffset does NOT become the end.
+      this.bufferedTo = Math.max(this.bufferedTo, this.timestampOffset + AD_SECONDS);
+      this.buffered = { length: 1, end: () => this.bufferedTo };
       this.updating = false;
       this.dispatchEvent(new Event('updateend'));
     });
@@ -74,7 +79,7 @@ describe('MseSession', () => {
     expect(a).toMatchObject({ start: 0, end: 15 });
     expect(b).toMatchObject({ start: 15, end: 30 });
     expect(FakeMediaSource.last.sb.mode).toBe('sequence');
-    expect(session.next('b')).toBe(b);
+    expect(session.segments).toEqual([a, b]);
   });
 });
 
@@ -137,5 +142,62 @@ describe('runPlayer with chainable videos', () => {
     expect(log.indexOf('preload b')).toBeLessThan(log.indexOf('end a'));
     expect(log).not.toContain('freeze');
     expect(screen.setTvCodecs).toHaveBeenCalledWith(CODECS);
+  });
+});
+
+describe('DomScreen keeps a single video decoder busy at most', () => {
+  const image = (id: string): Item => ({
+    campaignId: `c-${id}`, kind: 'commercial', name: id, frequencyLevel: 'low',
+    media: { id, url: `/api/media/${id}`, mediaType: 'image', mime: 'image/png', sha256: 's', sizeBytes: 1, durationMs: null, displaySeconds: 1 },
+  });
+
+  function setup() {
+    Object.defineProperty(HTMLImageElement.prototype, 'decode', { configurable: true, value: () => Promise.resolve() });
+    const root = document.body.appendChild(document.createElement('div'));
+    const screen = new DomScreen(root, { loadTimeoutMs: 50 });
+    screen.setTvCodecs(CODECS);
+    const videos = [...root.querySelectorAll('video')];
+    const playing = new Set<HTMLMediaElement>();
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(function (this: HTMLMediaElement) {
+      playing.add(this);
+      return Promise.resolve();
+    });
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(function (this: HTMLMediaElement) {
+      playing.delete(this);
+    });
+    for (const v of videos) {
+      Object.defineProperty(v, 'paused', { get: () => !playing.has(v) });
+      Object.defineProperty(v, 'readyState', { value: 4 });
+    }
+    const loaded = () => videos.filter((v) => v.getAttribute('src')).length;
+    return { screen, videos, loaded };
+  }
+
+  it('video, image, image, video: the old MediaSource is dropped before another video loads', async () => {
+    const { screen, videos, loaded } = setup();
+    expect(await screen.preload(tvVideo('v1'))).toBe(true);
+    const v1 = screen.present(tvVideo('v1'));
+    videos.forEach((v) => (v.currentTime = 15));
+    await v1;
+    for (const id of ['i1', 'i2']) {
+      expect(await screen.preload(image(id))).toBe(true);
+      await screen.present(image(id));
+      await new Promise((r) => setTimeout(r, 700));
+    }
+    expect(await screen.preload(tvVideo('v2'))).toBe(true);
+    expect(loaded()).toBe(1);
+  });
+
+  it('a failed append for the next ad does not cut the ad on screen', async () => {
+    const { screen, videos } = setup();
+    expect(await screen.preload(tvVideo('a'))).toBe(true);
+    void screen.present(tvVideo('a'));
+    await new Promise((r) => setTimeout(r, 700));
+    const onScreen = videos.find((v) => v.getAttribute('src'))!;
+    FakeMediaSource.last.sb.fail = true;
+    expect(screen.canChain(tvVideo('a'), tvVideo('b'))).toBe(true);
+    await screen.preload(tvVideo('b'));
+    expect(onScreen.getAttribute('src')).toBe('blob:ms');
+    expect(screen.canChain(tvVideo('a'), tvVideo('c'))).toBe(false);
   });
 });

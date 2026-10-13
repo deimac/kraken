@@ -23,7 +23,11 @@ export function tvVideoArgs(input: string, output: string, hasAudio: boolean): s
     '-i', input,
     ...(hasAudio ? [] : ['-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=48000']),
     '-map', '0:v:0', '-map', hasAudio ? '0:a:0' : '1:a:0',
-    '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=black,fps=30,setsar=1,format=yuv420p',
+    '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=black,fps=30,setsar=1,format=yuv420p',
+    // A soundtrack shorter than the picture is padded with silence: -shortest must never cut the video.
+    ...(hasAudio ? ['-af', 'apad'] : []),
+    // Two threads: the VPS also serves the panel and the TVs while this runs.
+    '-threads', '2',
     '-c:v', 'libx264', '-profile:v', 'high', '-level:v', '4.0', '-preset', 'veryfast', '-crf', '21',
     '-g', '60', '-keyint_min', '60', '-sc_threshold', '0', '-x264-params', 'open-gop=0',
     '-c:a', 'aac', '-b:a', '128k', '-ar', '48000', '-ac', '2',
@@ -92,7 +96,8 @@ export function createTvOptimizer(opts: { db: Db; storage: LocalStorage; ffmpeg:
       await run(ffmpeg, tvVideoArgs(source, video, audioCodec !== null));
       await run(ffmpeg, posterArgs(video, `${poster}.jpg`));
       const prefix = row.partnerId ?? 'institutional';
-      const tvKey = `${prefix}/${id}.tv.mp4`;
+      // Versioned name: a re-optimized file gets a new URL, so TVs never keep a stale cached copy.
+      const tvKey = `${prefix}/${id}.tv.${Date.now().toString(36)}.mp4`;
       const posterKey = `${prefix}/${id}.poster.jpg`;
       await storage.saveFrom(video, tvKey);
       await storage.saveFrom(`${poster}.jpg`, posterKey);

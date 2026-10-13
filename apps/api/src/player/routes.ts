@@ -107,12 +107,12 @@ export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean; v
         transitionMs: p!.transitionMs,
         refreshSeconds: p!.refreshSeconds,
       },
-      items: items.map(({ media: { tvReady, posterReady, ...m }, ...i }) => ({
+      items: items.map(({ media: { tvReady, tvVersion, posterReady, ...m }, ...i }) => ({
         ...i,
         media: {
           ...m,
           url: `/api/media/${m.id}`,
-          ...(tvReady ? { tvUrl: `/api/media/${m.id}/tv` } : {}),
+          ...(tvReady ? { tvUrl: `/api/media/${m.id}/tv?v=${tvVersion}` } : {}),
           ...(posterReady ? { posterUrl: `/api/media/${m.id}/poster` } : {}),
         },
       })),

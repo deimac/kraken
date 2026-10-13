@@ -39,9 +39,10 @@ export const mediaRoutes: FastifyPluginAsync<{ db: Db; storage: LocalStorage }> 
     const key = variant === 'original' ? m.storageKey : variant === 'tv' ? m.tvKey : m.posterKey;
     if (!key) return reply.code(404).send({ error: 'not_found' });
     const mime = variant === 'poster' ? 'image/jpeg' : m.mime;
-    const size = variant === 'original' ? m.sizeBytes : (await stat(storage.pathOf(key))).size;
+    const size = variant === 'original' ? m.sizeBytes : await stat(storage.pathOf(key)).then((s) => s.size, () => null);
+    if (size === null) return reply.code(404).send({ error: 'not_found' });
     // The TV copy and poster are derived from the original: same content hash, distinct tag per variant.
-    const etag = `"${m.sha256}${variant === 'original' ? '' : `-${variant}`}"`;
+    const etag = `"${m.sha256}${variant === 'original' ? '' : `-${variant}-${key.split('/').pop()}`}"`;
     reply
       .header('content-type', mime)
       .header('accept-ranges', 'bytes')
