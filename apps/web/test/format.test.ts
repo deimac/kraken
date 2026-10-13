@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { digits, formatDocument, formatPlanPrice, maskDocument, maskPhone, maskZip, planLimits } from '../src/format';
+import { digits, formatDocument, formatPlanPrice, maskDocument, maskPhone, maskZip, periodEnd, planLimits } from '../src/format';
 
 describe('input masks', () => {
   it('masks CPF and CNPJ progressively', () => {
@@ -35,5 +35,13 @@ describe('plan formatting', () => {
     expect(planLimits({ maxVideos: 2, maxImages: 3, maxVideoSeconds: 30 })).toBe('Até 2 vídeos de até 30 s · até 3 imagens');
     expect(planLimits({ maxVideos: 1, maxImages: 0, maxVideoSeconds: 15 })).toBe('Até 1 vídeo de até 15 s');
     expect(planLimits({ maxVideos: 0, maxImages: 1, maxVideoSeconds: 30 })).toBe('Até 1 imagem');
+  });
+});
+
+describe('periodEnd', () => {
+  it('ends the day before the same date of the following period, clamping short months', () => {
+    expect(periodEnd('2026-11-01', 1)).toBe('2026-11-30');
+    expect(periodEnd('2026-10-15', 12)).toBe('2027-10-14');
+    expect(periodEnd('2027-01-31', 1)).toBe('2027-02-27');
   });
 });

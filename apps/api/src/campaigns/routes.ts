@@ -324,12 +324,27 @@ export const campaignRoutes: FastifyPluginAsync<{ db: Db; storage?: LocalStorage
   app.post('/api/campaigns/:id/pieces/:pieceId/approve', partnerOnly, async (req, reply) => {
     const target = await loadPiece(req, reply);
     if (!target) return reply;
-    const piece = await changePiece(db, {
-      campaignId: target.c.id, pieceId: target.pieceId, from: ['pending_review'], to: 'approved', action: 'piece_approved',
-      actorUserId: req.user!.id,
+    // The plan may have been reduced since the upload: approved pieces must still fit. The campaign row lock
+    // (as in addPiece) makes two approvals racing for the last slot run one after the other.
+    const result = await db.transaction(async (tx) => {
+      const [c] = await tx.select({ planId: campaigns.planId }).from(campaigns).where(eq(campaigns.id, target.c.id)).for('update');
+      const [p] = await tx.select({ mediaType: media.mediaType }).from(media).where(eq(media.id, target.pieceId));
+      const [plan] = c?.planId ? await tx.select().from(plans).where(eq(plans.id, c.planId)) : [];
+      if (plan && p) {
+        const [live] = await tx
+          .select({ n: sql<number>`count(*)::int` })
+          .from(media)
+          .where(and(eq(media.campaignId, target.c.id), eq(media.mediaType, p.mediaType), eq(media.status, 'approved')));
+        if ((live?.n ?? 0) >= (p.mediaType === 'video' ? plan.maxVideos : plan.maxImages)) return 'plan_limit' as const;
+      }
+      return changePiece(tx as unknown as Db, {
+        campaignId: target.c.id, pieceId: target.pieceId, from: ['pending_review'], to: 'approved', action: 'piece_approved',
+        actorUserId: req.user!.id,
+      });
     });
-    if (!piece) return reply.code(409).send({ error: 'invalid_state' });
-    return { piece };
+    if (result === 'plan_limit') return reply.code(409).send({ error: 'plan_limit' });
+    if (!result) return reply.code(409).send({ error: 'invalid_state' });
+    return { piece: result };
   });
 
   app.post('/api/campaigns/:id/pieces/:pieceId/reject', partnerOnly, async (req, reply) => {

@@ -82,7 +82,7 @@ export function SubscriptionDetail({ base }: { base: Base }) {
     for (const file of files) {
       const form = new FormData();
       form.append('file', file);
-      const query = file.type.startsWith('image/') ? `?displaySeconds=${encodeURIComponent(seconds)}` : '';
+      const query = file.type.startsWith('image/') && seconds.trim() ? `?displaySeconds=${encodeURIComponent(seconds.trim())}` : '';
       try {
         await api(`/api/campaigns/${id}/pieces${query}`, { method: 'POST', form });
         results.push({ name: file.name, ok: true, text: 'enviado' });

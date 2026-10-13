@@ -5,7 +5,7 @@ import { requireRole } from '../auth/guard';
 import type { Db } from '../db/client';
 import { effectiveStatus } from '../campaigns/status';
 import { isForeignKeyViolation, isUniqueViolation } from '../db/errors';
-import { FREQUENCY_LEVELS, PERSON_TYPES, advertisers, campaigns, plans, plays, users } from '../db/schema';
+import { FREQUENCY_LEVELS, PERSON_TYPES, advertisers, campaignReviews, campaigns, plans, plays, users } from '../db/schema';
 import { parse } from '../http/validation';
 import { isValidDocument, onlyDigits } from './document';
 
@@ -164,11 +164,27 @@ export const catalogRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db })
     app.post(`/api/partner/advertisers/:id/${action}`, partnerOnly, async (req, reply) => {
       const params = parse(IdParams, req.params, reply);
       if (!params) return reply;
-      const [advertiser] = await db
-        .update(advertisers)
-        .set({ archivedAt: action === 'archive' ? new Date() : null, updatedAt: new Date() })
-        .where(own(params.id, req.user!.partnerId!))
-        .returning();
+      const advertiser = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(advertisers)
+          .set({ archivedAt: action === 'archive' ? new Date() : null, updatedAt: new Date() })
+          .where(own(params.id, req.user!.partnerId!))
+          .returning();
+        if (row && action === 'archive') {
+          // Archiving pauses what is on air; unarchiving never puts it back by itself.
+          const paused = await tx
+            .update(campaigns)
+            .set({ status: 'paused', updatedAt: new Date() })
+            .where(and(eq(campaigns.advertiserId, row.id), eq(campaigns.status, 'active')))
+            .returning({ id: campaigns.id });
+          if (paused.length) {
+            await tx.insert(campaignReviews).values(
+              paused.map((c) => ({ campaignId: c.id, action: 'paused' as const, actorUserId: req.user!.id, reason: 'Anunciante arquivado' })),
+            );
+          }
+        }
+        return row;
+      });
       if (!advertiser) return reply.code(404).send({ error: 'not_found' });
       return { advertiser };
     });

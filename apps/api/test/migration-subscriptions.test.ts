@@ -56,7 +56,7 @@ it('0008 turns campaigns into subscriptions with pieces, keeping plays', async (
   expect(pieces).toEqual([
     { id: M1, status: 'removed' },
     { id: M2, status: 'approved' },
-    { id: M3, status: 'approved' },
+    { id: M3, status: 'pending_review' }, // never reviewed by the partner: must not go on air on resume
   ]);
   const { rows: cols } = await client.query(
     `select column_name from information_schema.columns where table_name = 'campaigns' and column_name = 'current_media_id'`,

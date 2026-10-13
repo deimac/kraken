@@ -8,6 +8,7 @@ import { createPlayQueue, playEvent } from './queue';
 import { isTvSession } from './session';
 import './style.css';
 import type { Manifest } from './types';
+import { watchVersion } from './version';
 import { keepScreenOn } from './wake-lock';
 
 const root = document.getElementById('app')!;
@@ -17,7 +18,13 @@ async function start() {
   keepScreenOn();
   const screen = new DomScreen(root);
   screen.showWaiting(true);
-  const manifest = createManifestClient(() => api<Manifest>('/api/player/manifest'), {
+  const seenVersion = watchVersion(() => location.reload());
+  const fetchManifest = async () => {
+    const m = await api<Manifest>('/api/player/manifest');
+    seenVersion(m.version);
+    return m;
+  };
+  const manifest = createManifestClient(fetchManifest, {
     onUnauthorized: () => location.reload(),
   });
   mountControls(root, {

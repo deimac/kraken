@@ -142,6 +142,15 @@ describe('pieces', () => {
     expect(detail.pieces).toEqual([]);
   });
 
+  it('approval re-checks the current plan limit', async () => {
+    const c = (await req('POST', '/api/campaigns', advCookie, { planId: planA, ...period })).json().campaign;
+    const first = (await upload(c.id, advCookie, mp4())).json().piece;
+    const second = (await upload(c.id, advCookie, mp4())).json().piece;
+    await req('PATCH', `/api/campaigns/${c.id}`, s.gerenteA, { planId: smallPlan });
+    expect((await req('POST', `/api/campaigns/${c.id}/pieces/${first.id}/approve`, s.gerenteA)).statusCode).toBe(200);
+    expect((await req('POST', `/api/campaigns/${c.id}/pieces/${second.id}/approve`, s.gerenteA)).json()).toEqual({ error: 'plan_limit' });
+  });
+
   it('no uploads to cancelled subscriptions', async () => {
     const c = await create(s.gerenteA, { name: 'Cancelada' });
     await req('POST', `/api/campaigns/${c.id}/cancel`, s.gerenteA);

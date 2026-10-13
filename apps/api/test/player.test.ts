@@ -54,6 +54,7 @@ describe('player manifest', () => {
     const body = res.json();
     expect(body.partner).toMatchObject({ weights: { low: 1, medium: 2, high: 3 }, transition: 'slide', transitionMs: 1000 });
     expect(body.items.map((i: { name: string }) => i.name)).toEqual(['Aprovada']);
+    expect(body.version).toBe('t');
     expect(body.items[0].media).toMatchObject({ id: approvedMedia, url: `/api/media/${approvedMedia}`, mediaType: 'image' });
   });
 

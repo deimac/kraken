@@ -8,7 +8,7 @@ import type { Db } from '../db/client';
 import { partners } from '../db/schema';
 import { parse } from '../http/validation';
 
-export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean }> = async (app, { db, cookieSecure }) => {
+export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean; version?: string }> = async (app, { db, cookieSecure, version }) => {
   app.post('/api/player/login', { config: { rateLimit: LOGIN_RATE_LIMIT } }, async (req, reply) => {
     const body = parse(LoginBody, req.body, reply);
     if (!body) return reply;
@@ -58,6 +58,7 @@ export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean }>
       },
       items: items.map((i) => ({ ...i, media: { ...i.media, url: `/api/media/${i.media.id}` } })),
       generatedAt: new Date().toISOString(),
+      version,
     };
   });
 };

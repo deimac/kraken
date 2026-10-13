@@ -115,8 +115,10 @@ export function isoDay(d: Date): string {
 
 /** Last day of a period of `months` starting on `startDay` (inclusive): 2026-11-01 + 1 month → 2026-11-30. */
 export function periodEnd(startDay: string, months: number): string {
-  const d = new Date(`${startDay}T00:00:00`);
-  d.setMonth(d.getMonth() + months);
-  d.setDate(d.getDate() - 1);
-  return isoDay(d);
+  const start = new Date(`${startDay}T00:00:00`);
+  // Same day in the target month, clamped to its length (Jan 31 + 1 month → Feb 28), then the day before.
+  const target = new Date(start.getFullYear(), start.getMonth() + months, 1);
+  const lastOfMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(start.getDate(), lastOfMonth) - 1);
+  return isoDay(target);
 }

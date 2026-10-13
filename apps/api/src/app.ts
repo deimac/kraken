@@ -50,7 +50,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     await app.register(partnerRoutes, { db: opts.db });
     await app.register(catalogRoutes, { db: opts.db });
     await app.register(publicRoutes, { db: opts.db, cookieSecure: opts.cookieSecure ?? false });
-    await app.register(playerRoutes, { db: opts.db, cookieSecure: opts.cookieSecure ?? false });
+    await app.register(playerRoutes, { db: opts.db, cookieSecure: opts.cookieSecure ?? false, version: opts.version });
     await app.register(playRoutes, { db: opts.db });
     await app.register(reportRoutes, { db: opts.db });
     await app.register(multipart, { limits: { fileSize: opts.uploadLimits?.maxVideoBytes, files: 1, fields: 10 } });

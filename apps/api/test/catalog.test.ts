@@ -132,6 +132,12 @@ describe('advertisers', () => {
       frequencyLevel: 'low', startsAt: new Date(now - 864e5), endsAt: new Date(now + 864e5),
     });
     await req('POST', `/api/partner/advertisers/${adv!.id}/archive`, s.gerenteA);
+    const [paused] = await t.db.select({ status: campaigns.status }).from(campaigns).where(eq(campaigns.advertiserId, adv!.id));
+    expect(paused!.status).toBe('paused');
+    await req('POST', `/api/partner/advertisers/${adv!.id}/unarchive`, s.gerenteA);
+    const [still] = await t.db.select({ status: campaigns.status }).from(campaigns).where(eq(campaigns.advertiserId, adv!.id));
+    expect(still!.status).toBe('paused'); // unarchiving does not put anything back on air by itself
+    await req('POST', `/api/partner/advertisers/${adv!.id}/archive`, s.gerenteA);
     const list = await req('GET', '/api/partner/advertisers?archived=1&q=Arquivado no ar', s.gerenteA);
     expect(list.json().advertisers[0].activeCampaigns).toBe(0);
     const created = await req('POST', '/api/campaigns', s.gerenteA, {
