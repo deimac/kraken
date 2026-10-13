@@ -24,12 +24,15 @@ class FakeScreen implements Screen {
   });
   present = vi.fn(async (i: Item) => {
     this.log.push(`present ${i.campaignId}`);
+    this.lastPresented = i.campaignId;
     await Promise.resolve();
     this.log.push(`end ${i.campaignId}`);
     return this.results.shift() ?? 'completed';
   });
   setTransition = vi.fn();
   setMuted = vi.fn();
+  freezeVideo = vi.fn(() => this.log.push(`freeze ${this.lastPresented}`));
+  lastPresented = '';
   showWaiting = vi.fn((on: boolean) => this.log.push(`waiting ${on}`));
 }
 
@@ -51,10 +54,16 @@ describe('runPlayer', () => {
     expect(sleep).toHaveBeenCalledWith(1500);
   });
 
-  it('preloads the next video while the current one plays, for a smooth transition', async () => {
+  it('plays videos back to back one at a time: the next video loads only after the current one ended', async () => {
     const screen = new FakeScreen();
-    await runPlayer({ screen, manifest: () => manifest([video('A'), video('B')]), sleep: async () => {}, running: until(2) });
-    expect(screen.log.indexOf('preload B')).toBeLessThan(screen.log.indexOf('end A'));
+    await runPlayer({ screen, manifest: () => manifest([video('A'), video('B'), item('C')]), sleep: async () => {}, running: until(3) });
+    const log = screen.log;
+    // Fire TV and many TVs decode a single video: B waits for A, whose last frame stays on screen meanwhile
+    expect(log.indexOf('preload B')).toBeGreaterThan(log.indexOf('end A'));
+    expect(log.indexOf('freeze A')).toBeGreaterThan(log.indexOf('end A'));
+    expect(log.indexOf('freeze A')).toBeLessThan(log.indexOf('preload B'));
+    // an image can still be prepared while a video plays
+    expect(log.indexOf('preload C')).toBeLessThan(log.indexOf('end B'));
   });
 
   it('preloads the next ad while the current one plays', async () => {

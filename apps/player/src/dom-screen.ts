@@ -199,6 +199,29 @@ export class DomScreen implements Screen {
     });
   }
 
+  freezeVideo(): void {
+    const layer = this.layers[this.active]!;
+    const video = layer.video;
+    if (!video.getAttribute('src')) return;
+    try {
+      // Same-origin video: copy its last frame into the layer's image so the screen is not black while the next
+      // video loads, and the transition goes from that frame to the new video.
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx && canvas.width > 0) {
+        ctx.drawImage(video, 0, 0);
+        layer.img.src = canvas.toDataURL('image/jpeg', 0.85);
+        layer.img.classList.add('show');
+        video.classList.remove('show');
+      }
+    } catch {
+      // Some TV browsers cannot read video frames: a short dark gap instead.
+    }
+    this.releaseVideo(video);
+  }
+
   private releaseVideo(video: HTMLVideoElement): void {
     video.pause();
     video.removeAttribute('src');

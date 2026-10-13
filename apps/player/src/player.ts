@@ -11,6 +11,8 @@ export interface Screen {
   setTransition(type: Transition, ms: number): void;
   setMuted(muted: boolean): void;
   showWaiting(on: boolean): void;
+  /** Keeps the last frame of the video that just ended on screen and frees the TV's video decoder. */
+  freezeVideo?(): void;
 }
 
 interface Deps {
@@ -88,8 +90,15 @@ export async function runPlayer(deps: Deps): Promise<void> {
     screen.showWaiting(false);
     const playing = screen.present(current.item);
     const next = rotation!.next()!;
-    pending = { item: next, ready: screen.preload(next) };
+    // Fire TV and many TVs decode one video at a time: loading the next video while one plays turns both black.
+    // Video after video waits for the first to end (its last frame stays on screen); images load meanwhile.
+    const oneDecoder = current.item.media.mediaType === 'video' && next.media.mediaType === 'video';
+    if (!oneDecoder) pending = { item: next, ready: screen.preload(next) };
     const result = await playing;
+    if (oneDecoder) {
+      screen.freezeVideo?.();
+      pending = { item: next, ready: screen.preload(next) };
+    }
     deps.onPlayed?.(current.item, result);
     if (result === 'completed') {
       failures = 0;

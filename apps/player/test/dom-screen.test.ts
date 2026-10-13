@@ -151,4 +151,23 @@ describe('DomScreen with video', () => {
     expect(await ready).toBe(false);
     expect(issues).toEqual([expect.objectContaining({ kind: 'load_timeout', mediaId: 'v1' })]);
   });
+
+  it('freezing the ended video frees its decoder and shows the last frame when the browser can capture it', () => {
+    const root = document.body.appendChild(document.createElement('div'));
+    const screen = new DomScreen(root);
+    const frame = { drawImage: vi.fn() };
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(frame as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/jpeg;base64,AAAA');
+    const layer = root.querySelectorAll('.layer')[1]!; // active layer before the first present()
+    const video = layer.querySelector('video')!;
+    Object.defineProperty(video, 'videoWidth', { value: 1920 });
+    Object.defineProperty(video, 'videoHeight', { value: 1080 });
+    video.setAttribute('src', '/api/media/v1');
+    video.classList.add('show');
+    screen.freezeVideo();
+    expect(frame.drawImage).toHaveBeenCalledWith(video, 0, 0);
+    expect(layer.querySelector('img')!.getAttribute('src')).toBe('data:image/jpeg;base64,AAAA');
+    expect(layer.querySelector('img')!.classList.contains('show')).toBe(true);
+    expect(video.getAttribute('src')).toBeNull();
+  });
 });
