@@ -8,6 +8,7 @@ import { parse } from '../http/validation';
 import { addPiece } from '../media/pieces';
 import { receiveUpload, uploadRateLimit, type UploadLimits } from '../media/upload';
 import type { LocalStorage } from '../storage/local';
+import type { TvOptimizer } from '../media/tv-optimize';
 import { PIECE, changePiece, logEvent, sendPieceResult, transition, withStatus } from './routes';
 
 const IdParams = z.object({ id: z.uuid() });
@@ -24,9 +25,9 @@ const CreateInstitutional = z
   .strict();
 
 /** Kraken Ads institutional content: no plan and no limits; the admin's pieces go straight on air. */
-export const adminCampaignRoutes: FastifyPluginAsync<{ db: Db; storage?: LocalStorage; uploadLimits?: UploadLimits }> = async (
+export const adminCampaignRoutes: FastifyPluginAsync<{ db: Db; storage?: LocalStorage; uploadLimits?: UploadLimits; tvOptimizer?: TvOptimizer }> = async (
   app,
-  { db, storage, uploadLimits },
+  { db, storage, uploadLimits, tvOptimizer },
 ) => {
   app.addHook('preHandler', requireRole('admin'));
 
@@ -78,6 +79,7 @@ export const adminCampaignRoutes: FastifyPluginAsync<{ db: Db; storage?: LocalSt
     const result = await addPiece(db, storage, c, upload, {
       status: 'approved', actorUserId: req.user!.id, displaySeconds: query.displaySeconds,
     });
+    if (typeof result !== 'string' && result.mediaType === 'video') tvOptimizer?.enqueue(result.id);
     return sendPieceResult(reply, result);
   });
 

@@ -221,6 +221,10 @@ export const media = pgTable(
     reviewReason: text('review_reason'),
     uploadedBy: uuid('uploaded_by').references((): AnyPgColumn => users.id, { onDelete: 'set null' }),
     originalName: text('original_name'),
+    // TV-optimized copy (fragmented MP4, uniform codec) and first-frame poster; see media/tv-optimize.ts.
+    tvKey: text('tv_key'),
+    posterKey: text('poster_key'),
+    tvError: text('tv_error'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

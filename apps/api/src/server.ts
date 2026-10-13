@@ -4,6 +4,7 @@ import { ensureAdmin } from './bootstrap';
 import { loadConfig } from './config';
 import { createDb } from './db/client';
 import { loggerOptions } from './logger';
+import { findFfmpeg } from './media/tv-optimize';
 import { LocalStorage } from './storage/local';
 
 const config = loadConfig();
@@ -23,6 +24,8 @@ const app = await buildApp({
   db: database.db,
   cookieSecure: config.cookieSecure,
   storage,
+  // TV-optimized copies of videos need ffmpeg (installed in the Docker image); without it videos play as uploaded.
+  ffmpeg: process.env.TV_OPTIMIZE === 'off' ? null : findFfmpeg(),
   uploadLimits: {
     maxImageBytes: config.maxImageMb * 1024 * 1024,
     maxVideoBytes: config.maxVideoMb * 1024 * 1024,
@@ -48,3 +51,6 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
 }
 
 await app.listen({ port: config.port, host: config.host });
+app.log.info({ tvOptimize: Boolean(app.tvOptimizer) }, 'tv optimization');
+// Videos uploaded before the optimizer existed (or while it was off) are processed in the background.
+void app.tvOptimizer?.backfill().catch((err) => app.log.error({ err }, 'tv optimization backfill'));

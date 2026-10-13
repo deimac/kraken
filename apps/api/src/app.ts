@@ -20,6 +20,7 @@ import { publicRoutes } from './public/routes';
 import { reportRoutes } from './reports/routes';
 import { registerStatic } from './static';
 import type { LocalStorage } from './storage/local';
+import { createTvOptimizer, type TvOptimizer } from './media/tv-optimize';
 
 export interface AppOptions {
   version: string;
@@ -30,6 +31,14 @@ export interface AppOptions {
   cookieSecure?: boolean;
   storage?: LocalStorage;
   uploadLimits?: UploadLimits;
+  /** ffmpeg binary: when set, uploaded videos also get a TV-optimized copy (see media/tv-optimize.ts). */
+  ffmpeg?: string | null;
+}
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    tvOptimizer?: TvOptimizer;
+  }
 }
 
 export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
@@ -58,8 +67,12 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     await app.register(playRoutes, { db: opts.db });
     await app.register(reportRoutes, { db: opts.db });
     await app.register(multipart, { limits: { fileSize: opts.uploadLimits?.maxVideoBytes, files: 1, fields: 10 } });
-    await app.register(campaignRoutes, { db: opts.db, storage: opts.storage, uploadLimits: opts.uploadLimits });
-    await app.register(adminCampaignRoutes, { db: opts.db, storage: opts.storage, uploadLimits: opts.uploadLimits });
+    const tvOptimizer = opts.storage && opts.ffmpeg
+      ? createTvOptimizer({ db: opts.db, storage: opts.storage, ffmpeg: opts.ffmpeg, log: app.log })
+      : undefined;
+    app.decorate('tvOptimizer', tvOptimizer);
+    await app.register(campaignRoutes, { db: opts.db, storage: opts.storage, uploadLimits: opts.uploadLimits, tvOptimizer });
+    await app.register(adminCampaignRoutes, { db: opts.db, storage: opts.storage, uploadLimits: opts.uploadLimits, tvOptimizer });
     if (opts.storage) await app.register(mediaRoutes, { db: opts.db, storage: opts.storage });
   }
   await registerStatic(app, { webDir: opts.webDir, playerDir: opts.playerDir });

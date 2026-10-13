@@ -7,6 +7,8 @@ RUN pnpm install --frozen-lockfile \
  && pnpm --filter @kraken/api deploy --prod --legacy /out
 
 FROM node:24-alpine
+# ffmpeg makes the TV-optimized copy of each video (apps/api/src/media/tv-optimize.ts).
+RUN apk add --no-cache ffmpeg
 ENV NODE_ENV=production \
     PORT=3000 \
     HOST=0.0.0.0 \

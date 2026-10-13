@@ -15,6 +15,9 @@ export interface EligibleItem {
     sizeBytes: number;
     durationMs: number | null;
     displaySeconds: number | null;
+    /** TV-optimized copy and poster, once ready (see media/tv-optimize.ts). */
+    tvReady: boolean;
+    posterReady: boolean;
   };
 }
 
@@ -33,6 +36,7 @@ export async function listEligible(db: Db, partnerId: string, now: Date = new Da
       campaignId: campaigns.id, kind: campaigns.kind, name: campaigns.name, frequencyLevel: campaigns.frequencyLevel,
       mediaId: media.id, mediaType: media.mediaType, mime: media.mime, sha256: media.sha256,
       sizeBytes: media.sizeBytes, durationMs: media.durationMs, displaySeconds: media.displaySeconds,
+      tvKey: media.tvKey, posterKey: media.posterKey,
     })
     .from(campaigns)
     .innerJoin(media, and(eq(media.campaignId, campaigns.id), eq(media.status, 'approved')))
@@ -44,6 +48,7 @@ export async function listEligible(db: Db, partnerId: string, now: Date = new Da
     media: {
       id: r.mediaId, mediaType: r.mediaType, mime: r.mime, sha256: r.sha256, sizeBytes: r.sizeBytes,
       durationMs: r.durationMs, displaySeconds: r.displaySeconds,
+      tvReady: r.tvKey !== null, posterReady: r.posterKey !== null,
     },
   }));
 }

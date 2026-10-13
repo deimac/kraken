@@ -1,5 +1,6 @@
+import { stat } from 'node:fs/promises';
 import { eq } from 'drizzle-orm';
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { requireRole } from '../auth/guard';
 import type { SessionUser } from '../auth/sessions';
@@ -10,6 +11,7 @@ import { parse } from '../http/validation';
 import type { LocalStorage } from '../storage/local';
 
 const IdParams = z.object({ id: z.uuid() });
+type Variant = 'original' | 'tv' | 'poster';
 
 function canRead(user: SessionUser, m: { partnerId: string | null }, advertiserId: string | null): boolean {
   if (user.role === 'admin') return true;
@@ -19,7 +21,7 @@ function canRead(user: SessionUser, m: { partnerId: string | null }, advertiserI
 }
 
 export const mediaRoutes: FastifyPluginAsync<{ db: Db; storage: LocalStorage }> = async (app, { db, storage }) => {
-  app.get('/api/media/:id', { preHandler: requireRole(...ROLES) }, async (req, reply) => {
+  async function serve(req: FastifyRequest, reply: FastifyReply, variant: Variant) {
     const params = parse(IdParams, req.params, reply);
     if (!params) return reply;
     const [row] = await db
@@ -34,10 +36,14 @@ export const mediaRoutes: FastifyPluginAsync<{ db: Db; storage: LocalStorage }> 
     }
     if (!row || !canRead(req.user!, row.m, row.advertiserId)) return reply.code(404).send({ error: 'not_found' });
     const m = row.m;
-    const size = m.sizeBytes;
-    const etag = `"${m.sha256}"`;
+    const key = variant === 'original' ? m.storageKey : variant === 'tv' ? m.tvKey : m.posterKey;
+    if (!key) return reply.code(404).send({ error: 'not_found' });
+    const mime = variant === 'poster' ? 'image/jpeg' : m.mime;
+    const size = variant === 'original' ? m.sizeBytes : (await stat(storage.pathOf(key))).size;
+    // The TV copy and poster are derived from the original: same content hash, distinct tag per variant.
+    const etag = `"${m.sha256}${variant === 'original' ? '' : `-${variant}`}"`;
     reply
-      .header('content-type', m.mime)
+      .header('content-type', mime)
       .header('accept-ranges', 'bytes')
       .header('etag', etag)
       .header('cache-control', 'private, max-age=31536000, immutable');
@@ -46,7 +52,7 @@ export const mediaRoutes: FastifyPluginAsync<{ db: Db; storage: LocalStorage }> 
     const range = req.headers.range;
     if (!range) {
       reply.header('content-length', size);
-      return reply.send(storage.createReadStream(m.storageKey));
+      return reply.send(storage.createReadStream(key));
     }
     const match = /^bytes=(\d*)-(\d*)$/.exec(range);
     let start = -1;
@@ -64,6 +70,11 @@ export const mediaRoutes: FastifyPluginAsync<{ db: Db; storage: LocalStorage }> 
       return reply.code(416).header('content-range', `bytes */${size}`).send();
     }
     reply.code(206).header('content-range', `bytes ${start}-${end}/${size}`).header('content-length', end - start + 1);
-    return reply.send(storage.createReadStream(m.storageKey, { start, end }));
-  });
+    return reply.send(storage.createReadStream(key, { start, end }));
+  }
+
+  const guard = { preHandler: requireRole(...ROLES) };
+  app.get('/api/media/:id', guard, (req, reply) => serve(req, reply, 'original'));
+  app.get('/api/media/:id/tv', guard, (req, reply) => serve(req, reply, 'tv'));
+  app.get('/api/media/:id/poster', guard, (req, reply) => serve(req, reply, 'poster'));
 };

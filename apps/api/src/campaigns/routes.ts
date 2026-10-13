@@ -12,6 +12,7 @@ import { parse } from '../http/validation';
 import { OCCUPYING, addPiece, type AddPieceResult } from '../media/pieces';
 import { receiveUpload, uploadRateLimit, type UploadLimits } from '../media/upload';
 import type { LocalStorage } from '../storage/local';
+import type { TvOptimizer } from '../media/tv-optimize';
 import { effectiveStatus } from './status';
 
 // Commercial campaigns are shown to people as "subscriptions" (assinaturas): advertiser + plan + period, with pieces.
@@ -110,9 +111,9 @@ export function sendPieceResult(reply: FastifyReply, result: AddPieceResult) {
   return reply.code(201).send({ piece: { id, mediaType, mime, durationMs, displaySeconds, status, reviewReason, originalName, createdAt } });
 }
 
-export const campaignRoutes: FastifyPluginAsync<{ db: Db; storage?: LocalStorage; uploadLimits?: UploadLimits }> = async (
+export const campaignRoutes: FastifyPluginAsync<{ db: Db; storage?: LocalStorage; uploadLimits?: UploadLimits; tvOptimizer?: TvOptimizer }> = async (
   app,
-  { db, storage, uploadLimits },
+  { db, storage, uploadLimits, tvOptimizer },
 ) => {
   const anyOwner = { preHandler: requireRole('partner_user', 'advertiser') };
   const partnerOnly = { preHandler: requireRole('partner_user') };
@@ -318,6 +319,7 @@ export const campaignRoutes: FastifyPluginAsync<{ db: Db; storage?: LocalStorage
       actorUserId: req.user!.id,
       displaySeconds: query.displaySeconds,
     });
+    if (typeof result !== 'string' && result.mediaType === 'video') tvOptimizer?.enqueue(result.id);
     return sendPieceResult(reply, result);
   });
 

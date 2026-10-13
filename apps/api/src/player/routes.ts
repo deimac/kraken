@@ -9,6 +9,7 @@ import type { Db } from '../db/client';
 import { partners, users } from '../db/schema';
 import { parse } from '../http/validation';
 import { ensurePlayerUser } from './account';
+import { TV_CODECS } from '../media/tv-optimize';
 import { hashTvCode } from './code';
 
 const CodeBody = z.object({ code: z.string().min(8).max(40) }).strict();
@@ -106,7 +107,17 @@ export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean; v
         transitionMs: p!.transitionMs,
         refreshSeconds: p!.refreshSeconds,
       },
-      items: items.map((i) => ({ ...i, media: { ...i.media, url: `/api/media/${i.media.id}` } })),
+      items: items.map(({ media: { tvReady, posterReady, ...m }, ...i }) => ({
+        ...i,
+        media: {
+          ...m,
+          url: `/api/media/${m.id}`,
+          ...(tvReady ? { tvUrl: `/api/media/${m.id}/tv` } : {}),
+          ...(posterReady ? { posterUrl: `/api/media/${m.id}/poster` } : {}),
+        },
+      })),
+      // Every tvUrl shares these codecs: the player may append them back to back into one MediaSource buffer.
+      tvCodecs: TV_CODECS,
       generatedAt: new Date().toISOString(),
       version,
     };

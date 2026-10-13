@@ -42,6 +42,11 @@ export class LocalStorage {
     await rm(this.resolve(key), { force: true });
   }
 
+  /** Absolute path of a stored file (for tools such as ffmpeg). */
+  pathOf(key: string): string {
+    return this.resolve(key);
+  }
+
   private resolve(key: string): string {
     const p = resolve(this.root, key);
     if (!p.startsWith(this.root + sep)) throw new Error('invalid storage key');

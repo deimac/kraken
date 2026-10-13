@@ -15,6 +15,7 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
@@ -38,8 +39,10 @@ jobs:
             curl -sf http://127.0.0.1:3000/api/health && break
             sleep 1
           done
+          docker exec kraken ffmpeg -version | head -1
           curl -sf http://127.0.0.1:3000/api/health | grep '"status":"ok"'
           curl -sf http://127.0.0.1:3000/player/ | grep 'Kraken Ads Player'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/nao-existe)" = 404
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/auth/me)" = 401
           docker logs kraken | grep -q 'Server listening'
+          docker logs kraken | grep -q '"tvOptimize":true'
