@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull, lt, or } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import { requireRole } from '../auth/guard';
 import { LOGIN_RATE_LIMIT, LoginBody, TV_COOKIE, checkCredentials, setSessionCookie } from '../auth/plugin';
@@ -48,6 +48,11 @@ export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean; v
       const renewed = await renewSession(db, token);
       if (renewed) setSessionCookie(reply, token, renewed, cookieSecure, TV_COOKIE);
     }
+    // "TV online" on the dashboard; written at most once a minute per partner.
+    await db
+      .update(partners)
+      .set({ tvLastSeenAt: new Date() })
+      .where(and(eq(partners.id, partnerId), or(isNull(partners.tvLastSeenAt), lt(partners.tvLastSeenAt, new Date(Date.now() - 60_000)))));
     const items = await listEligible(db, partnerId);
     return {
       partner: {

@@ -39,6 +39,7 @@ export const partners = pgTable(
     krakenPlanId: uuid('kraken_plan_id').references(() => krakenPlans.id, { onDelete: 'restrict' }),
     transition: text('transition', { enum: ['fade', 'slide', 'cut'] }).notNull().default('fade'),
     transitionMs: integer('transition_ms').notNull().default(600),
+    tvLastSeenAt: timestamp('tv_last_seen_at', { withTimezone: true }), // last manifest fetch by the partner's TV
     ...timestamps,
   },
   (t) => [

@@ -13,6 +13,7 @@ import type { UploadLimits } from './media/upload';
 import { adminPartnerRoutes } from './partners/admin-routes';
 import { partnerRoutes } from './partners/partner-routes';
 import { playerRoutes } from './player/routes';
+import { dashboardRoutes } from './dashboard/routes';
 import { playRoutes } from './plays/routes';
 import { publicRoutes } from './public/routes';
 import { reportRoutes } from './reports/routes';
@@ -50,6 +51,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     await app.register(partnerRoutes, { db: opts.db });
     await app.register(catalogRoutes, { db: opts.db });
     await app.register(publicRoutes, { db: opts.db, cookieSecure: opts.cookieSecure ?? false });
+    await app.register(dashboardRoutes, { db: opts.db });
     await app.register(playerRoutes, { db: opts.db, cookieSecure: opts.cookieSecure ?? false, version: opts.version });
     await app.register(playRoutes, { db: opts.db });
     await app.register(reportRoutes, { db: opts.db });
