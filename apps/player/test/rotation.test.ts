@@ -3,9 +3,9 @@ import { createRotation } from '../src/rotation';
 import type { Item, Level } from '../src/types';
 
 const W = { low: 1, medium: 2, high: 3 };
-const item = (id: string, level: Level): Item => ({
+const item = (id: string, level: Level, piece = id): Item => ({
   campaignId: id, kind: 'commercial', name: id, frequencyLevel: level,
-  media: { id: `m-${id}`, url: `/api/media/m-${id}`, mediaType: 'image', mime: 'image/png', sha256: 'x', sizeBytes: 1, durationMs: null, displaySeconds: 10 },
+  media: { id: `m-${piece}`, url: `/api/media/m-${piece}`, mediaType: 'image', mime: 'image/png', sha256: 'x', sizeBytes: 1, durationMs: null, displaySeconds: 10 },
 });
 
 function run(items: Item[], n: number, weights = W) {
@@ -49,5 +49,17 @@ describe('createRotation', () => {
     expect(count(seq, 'L2')).toBe(1000);
     expect(count(seq, 'M1')).toBe(2000);
     expect(count(seq, 'H1')).toBe(3000);
+  });
+
+  it('weights subscriptions, not pieces, and alternates pieces inside a subscription', () => {
+    const items = [item('H', 'high', 'h1'), item('H', 'high', 'h2'), item('L', 'low', 'l1')];
+    const r = createRotation(items, W);
+    const pieces: string[] = [];
+    for (let i = 0; i < 4000; i++) pieces.push(r.next()!.media.id);
+    expect(count(pieces, 'm-h1')).toBe(1500);
+    expect(count(pieces, 'm-h2')).toBe(1500);
+    expect(count(pieces, 'm-l1')).toBe(1000);
+    // the same piece never plays twice in a row while there is another one to show
+    expect(repeats(pieces)).toBe(0);
   });
 });
