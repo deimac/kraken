@@ -15,9 +15,11 @@ const manifest = (items: Item[], transition: Manifest['partner']['transition'] =
 class FakeScreen implements Screen {
   log: string[] = [];
   failPreload = new Set<string>();
+  failOnce = new Set<string>();
   results: PlayResult[] = [];
   preload = vi.fn(async (i: Item) => {
     this.log.push(`preload ${i.campaignId}`);
+    if (this.failOnce.delete(i.campaignId)) return false;
     return !this.failPreload.has(i.campaignId);
   });
   present = vi.fn(async (i: Item) => {
@@ -40,6 +42,16 @@ function until(n: number) {
 const video = (id: string): Item => ({ ...item(id), media: { ...item(id).media, mediaType: 'video', mime: 'video/mp4', durationMs: 15000, displaySeconds: null } });
 
 describe('runPlayer', () => {
+  it('retries a video that failed to load right after another video before skipping it', async () => {
+    const screen = new FakeScreen();
+    screen.failOnce.add('B');
+    const sleep = vi.fn(async () => {});
+    await runPlayer({ screen, manifest: () => manifest([video('A'), video('B')]), sleep, running: until(3) });
+    const presented = screen.log.filter((l) => l.startsWith('present'));
+    expect(presented.slice(0, 2)).toEqual(['present A', 'present B']);
+    expect(sleep).toHaveBeenCalledWith(1500);
+  });
+
   it('never loads a second video while one is playing (TVs with a single video decoder)', async () => {
     const screen = new FakeScreen();
     await runPlayer({ screen, manifest: () => manifest([video('A'), video('B'), item('C')]), sleep: async () => {}, running: until(3) });

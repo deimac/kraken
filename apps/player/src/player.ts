@@ -37,7 +37,8 @@ export async function runPlayer(deps: Deps): Promise<void> {
   let source: Manifest | null = null;
   let sourceSignature = '';
   let rotation: Rotation | null = null;
-  let pending: { item: Item; ready: Promise<boolean> } | null = null;
+  type Pending = { item: Item; ready: Promise<boolean>; retried?: boolean };
+  let pending: Pending | null = null;
   let failures = 0;
 
   while (deps.running()) {
@@ -67,9 +68,15 @@ export async function runPlayer(deps: Deps): Promise<void> {
       pending = { item: first, ready: screen.preload(first) };
     }
 
-    const current = pending;
+    const current: Pending = pending;
     pending = null;
     if (!(await current.ready)) {
+      // TVs can take a moment to free the decoder of the video that just ended: try once more before skipping.
+      if (current.item.media.mediaType === 'video' && !current.retried) {
+        await deps.sleep(1500);
+        pending = { item: current.item, ready: screen.preload(current.item), retried: true };
+        continue;
+      }
       failures++;
       if (failures >= m.items.length) {
         // Nothing loads (network down, broken files): rest instead of spinning.

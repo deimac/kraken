@@ -16,7 +16,20 @@ const root = document.getElementById('app')!;
 async function start() {
   root.innerHTML = '';
   keepScreenOn();
-  const screen = new DomScreen(root);
+  // Problems on this TV go to the panel (Conta da TV → Diagnóstico), in small batches.
+  let issues: { kind: string; mediaId?: string; detail?: string; at: string }[] = [];
+  const screen = new DomScreen(root, {
+    onIssue: (issue) => {
+      issues.push({ ...issue, at: new Date().toISOString() });
+      issues = issues.slice(-50);
+    },
+  });
+  const sendIssues = () => {
+    if (!issues.length) return;
+    const batch = issues;
+    issues = [];
+    void api('/api/player/events', { method: 'POST', body: { events: batch } }).catch(() => undefined);
+  };
   screen.showWaiting(true);
   const seenVersion = watchVersion(() => location.reload());
   const fetchManifest = async () => {
@@ -38,7 +51,10 @@ async function start() {
     send: (batch, sentAt) =>
       api<{ accepted: string[]; rejected: string[] }>('/api/player/plays', { method: 'POST', body: { plays: batch, sentAt } }),
   });
-  const flush = () => void plays.flush();
+  const flush = () => {
+    void plays.flush();
+    sendIssues();
+  };
   setInterval(flush, 30_000);
   window.addEventListener('online', flush);
   flush(); // plays left over from before a restart

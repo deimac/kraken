@@ -220,6 +220,20 @@ describe('TV account', () => {
     expect(await screen.findByText(`${window.location.origin}/player/ironberg`)).toBeTruthy();
   });
 
+  it('shows what went wrong on the TV', async () => {
+    mockApi({
+      'GET /api/auth/me': { user: partnerUser },
+      'GET /api/partner': { partner: { id: 'p1', name: 'Ironberg', slug: 'ironberg', transition: 'fade', transitionMs: 600 } },
+      'GET /api/partner/tv-events': {
+        events: [{ kind: 'load_timeout', detail: 'readyState=1 networkState=2', at: '2026-10-13T12:00:00Z', userAgent: 'Mozilla/5.0 AFTMM Silk/120', receivedAt: '2026-10-13T12:00:30Z' }],
+      },
+    });
+    renderAt('/parceiro/tv');
+    expect(await screen.findByText('Vídeo não carregou a tempo')).toBeTruthy();
+    expect(screen.getByText(/readyState=1/)).toBeTruthy();
+    expect(screen.getByText(/Silk/)).toBeTruthy();
+  });
+
   it('lets the partner choose the transition', async () => {
     const calls = mockApi({
       'GET /api/auth/me': { user: partnerUser },

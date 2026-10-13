@@ -1,6 +1,13 @@
 import type { PlayResult, Screen } from './player';
 import type { Item, Transition } from './types';
 
+/** Something that went wrong on this TV, sent to the panel for diagnosis. */
+export interface ScreenIssue {
+  kind: 'load_timeout' | 'load_error' | 'image_error' | 'play_rejected' | 'stalled' | 'video_error';
+  mediaId?: string;
+  detail?: string;
+}
+
 interface Layer {
   el: HTMLDivElement;
   video: HTMLVideoElement;
@@ -20,8 +27,13 @@ export class DomScreen implements Screen {
   private freeAt: Promise<void> = Promise.resolve();
   private readonly loadTimeoutMs: number;
   private readonly stallTimeoutMs: number;
+  private readonly onIssue: (issue: ScreenIssue) => void;
 
-  constructor(root: HTMLElement, opts: { loadTimeoutMs?: number; stallTimeoutMs?: number } = {}) {
+  constructor(
+    root: HTMLElement,
+    opts: { loadTimeoutMs?: number; stallTimeoutMs?: number; onIssue?: (issue: ScreenIssue) => void } = {},
+  ) {
+    this.onIssue = opts.onIssue ?? (() => undefined);
     this.loadTimeoutMs = opts.loadTimeoutMs ?? 30_000;
     this.stallTimeoutMs = opts.stallTimeoutMs ?? 15_000;
     this.stage = document.createElement('div');
@@ -80,6 +92,7 @@ export class DomScreen implements Screen {
       const ready = img.decode ? img.decode().then(() => true, () => false) : loaded;
       const ok = await withTimeout(ready, this.loadTimeoutMs, false);
       img.onload = img.onerror = null;
+      if (!ok) this.onIssue({ kind: 'image_error', mediaId: item.media.id });
       return ok;
     }
     const video = layer.video;
@@ -87,8 +100,12 @@ export class DomScreen implements Screen {
     const ready = new Promise<boolean>((resolve) => {
       finish = resolve;
     });
+    let failedWithError = false;
     const onReady = () => finish(true);
-    const onError = () => finish(false);
+    const onError = () => {
+      failedWithError = true;
+      finish(false);
+    };
     // Some TV browsers fire canplay but never canplaythrough.
     video.addEventListener('canplay', onReady);
     video.addEventListener('canplaythrough', onReady);
@@ -99,7 +116,15 @@ export class DomScreen implements Screen {
     video.removeEventListener('canplay', onReady);
     video.removeEventListener('canplaythrough', onReady);
     video.removeEventListener('error', onError);
-    return ok || video.readyState >= 3; // HAVE_FUTURE_DATA: enough to start
+    const usable = ok || video.readyState >= 3; // HAVE_FUTURE_DATA: enough to start
+    if (!usable) {
+      this.onIssue(
+        failedWithError
+          ? { kind: 'load_error', mediaId: item.media.id, detail: `code=${video.error?.code ?? '?'} ${video.error?.message ?? ''}`.trim() }
+          : { kind: 'load_timeout', mediaId: item.media.id, detail: `readyState=${video.readyState} networkState=${video.networkState}` },
+      );
+    }
+    return usable;
   }
 
   async present(item: Item): Promise<PlayResult> {
@@ -121,7 +146,8 @@ export class DomScreen implements Screen {
       incoming.video.currentTime = 0;
       try {
         await incoming.video.play();
-      } catch {
+      } catch (err) {
+        this.onIssue({ kind: 'play_rejected', mediaId: item.media.id, detail: (err as Error)?.name ?? String(err) });
         this.active = previous; // the current ad stays on screen
         unlock();
         return 'failed';
@@ -143,18 +169,25 @@ export class DomScreen implements Screen {
       await sleep((item.media.displaySeconds ?? 10) * 1000);
       return 'completed';
     }
-    return this.watchVideo(incoming.video);
+    return this.watchVideo(incoming.video, item.media.id);
   }
 
-  private watchVideo(video: HTMLVideoElement): Promise<PlayResult> {
+  private watchVideo(video: HTMLVideoElement, mediaId: string): Promise<PlayResult> {
+    const report = this.onIssue;
     return new Promise((resolve) => {
       let lastTime = video.currentTime;
       const watchdog = setInterval(() => {
-        if (video.currentTime === lastTime) finish('failed'); // stalled
+        if (video.currentTime === lastTime) {
+          report({ kind: 'stalled', mediaId, detail: `at ${Math.round(video.currentTime)}s readyState=${video.readyState}` });
+          finish('failed');
+        }
         lastTime = video.currentTime;
       }, this.stallTimeoutMs);
       const onEnded = () => finish('completed');
-      const onError = () => finish('failed');
+      const onError = () => {
+        report({ kind: 'video_error', mediaId, detail: `code=${video.error?.code ?? '?'}` });
+        finish('failed');
+      };
       function finish(result: PlayResult) {
         clearInterval(watchdog);
         video.removeEventListener('ended', onEnded);

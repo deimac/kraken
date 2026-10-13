@@ -4,6 +4,53 @@ import { errorMessage } from '../../messages';
 import type { Transition } from '../../types';
 import { ConfirmDialog, Field, Notice, PageHeader } from '../../ui';
 
+interface TvEvent { kind: string; detail?: string; at: string; userAgent: string | null }
+
+const ISSUE_LABEL: Record<string, string> = {
+  load_timeout: 'Vídeo não carregou a tempo',
+  load_error: 'Erro ao carregar o vídeo',
+  image_error: 'Imagem não carregou',
+  play_rejected: 'A TV recusou reproduzir o vídeo',
+  stalled: 'Vídeo travou durante a exibição',
+  video_error: 'Erro durante o vídeo',
+};
+
+/** Recent problems reported by the partner's TVs (kept by the server until it restarts). */
+function TvDiagnostics() {
+  const [events, setEvents] = useState<TvEvent[] | null>(null);
+  const load = useCallback(() => {
+    api<{ events: TvEvent[] }>('/api/partner/tv-events').then((r) => setEvents(r.events)).catch(() => setEvents([]));
+  }, []);
+  useEffect(load, [load]);
+  return (
+    <div className="card">
+      <div className="section-head">
+        <h2>Diagnóstico da TV</h2>
+        <button className="btn" type="button" onClick={load}>Atualizar</button>
+      </div>
+      {events === null ? (
+        <p className="muted">Carregando…</p>
+      ) : events.length === 0 ? (
+        <p className="muted">Nenhum problema relatado pelas TVs.</p>
+      ) : (
+        <>
+          {events[0]?.userAgent && <p className="muted">Navegador da TV: {events[0].userAgent}</p>}
+          <div className="list">
+            {events.slice(0, 20).map((e, i) => (
+              <div className="row" key={i}>
+                <div className="row-main">
+                  <div>{ISSUE_LABEL[e.kind] ?? e.kind}</div>
+                  <div className="row-sub">{new Date(e.at).toLocaleString('pt-BR')}{e.detail ? ` · ${e.detail}` : ''}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 interface PartnerTv {
   slug: string;
   transition: Transition;
@@ -140,6 +187,7 @@ export function TvAccount() {
           {codeSet ? 'Gerar novo código' : 'Gerar código de acesso'}
         </button>
       </div>
+      <TvDiagnostics />
       <div className="card">
         <h2>TVs conectadas</h2>
         <p className="muted">Se um código vazou ou uma TV saiu do estabelecimento, desconecte todas e conecte de novo com um código novo.</p>

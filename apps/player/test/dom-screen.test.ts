@@ -140,4 +140,15 @@ describe('DomScreen with video', () => {
     root.querySelectorAll('.layer img')[0]!.dispatchEvent(new Event('load'));
     expect(await ready).toBe(true);
   });
+
+  it('reports why a video could not load', async () => {
+    const root = document.body.appendChild(document.createElement('div'));
+    const issues: { kind: string; mediaId?: string }[] = [];
+    const screen = new DomScreen(root, { loadTimeoutMs: 1000, onIssue: (e) => issues.push(e) });
+    const video: Item = { ...image('v1'), media: { ...image('v1').media, mediaType: 'video', mime: 'video/mp4', durationMs: 15000, displaySeconds: null } };
+    const ready = screen.preload(video);
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(await ready).toBe(false);
+    expect(issues).toEqual([expect.objectContaining({ kind: 'load_timeout', mediaId: 'v1' })]);
+  });
 });
