@@ -1,8 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../api';
 import { errorMessage } from '../../messages';
 import type { Transition } from '../../types';
-import { Field, Notice, PageHeader } from '../../ui';
+import { ConfirmDialog, Field, Notice, PageHeader } from '../../ui';
 
 interface PartnerTv {
   slug: string;
@@ -12,19 +12,18 @@ interface PartnerTv {
 }
 
 export function TvAccount() {
-  const [login, setLogin] = useState<string | null>(null);
-  const [password, setPassword] = useState('');
   const [transition, setTransition] = useState<Transition>('fade');
   const [transitionMs, setTransitionMs] = useState(600);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [codeSet, setCodeSet] = useState(false);
-  const [code, setCode] = useState<{ code: string; link: string } | null>(null);
+  const [code, setCode] = useState<{ code: string; link: string; expiresAt: string } | null>(null);
+  const [revoking, setRevoking] = useState(false);
+  const closeRevoke = useCallback(() => setRevoking(false), []);
 
   useEffect(() => {
     api<{ partner: PartnerTv }>('/api/partner')
       .then((r) => {
-        setLogin(`tv@${r.partner.slug}`);
         setTransition(r.partner.transition);
         setTransitionMs(r.partner.transitionMs);
         setCodeSet(Boolean(r.partner.tvCodeSet));
@@ -32,14 +31,13 @@ export function TvAccount() {
       .catch((e) => setMsg({ kind: 'error', text: errorMessage(e) }));
   }, []);
 
-  async function save(e: FormEvent) {
-    e.preventDefault();
+  async function generateCode() {
     setBusy(true);
+    setMsg(null);
     try {
-      const r = await api<{ login: string }>('/api/partner/player-account', { method: 'PUT', body: { password } });
-      setLogin(r.login);
-      setPassword('');
-      setMsg({ kind: 'ok', text: 'Senha definida. As TVs conectadas foram desconectadas e precisam entrar com a nova senha.' });
+      const r = await api<{ code: string; path: string; expiresAt: string }>('/api/partner/player-code', { method: 'POST' });
+      setCode({ code: r.code, link: `${window.location.origin}${r.path}`, expiresAt: r.expiresAt });
+      setCodeSet(true);
     } catch (err) {
       setMsg({ kind: 'error', text: errorMessage(err) });
     } finally {
@@ -47,16 +45,17 @@ export function TvAccount() {
     }
   }
 
-  async function generateCode() {
+  async function revoke() {
     setBusy(true);
-    setMsg(null);
     try {
-      const r = await api<{ code: string; path: string }>('/api/partner/player-code', { method: 'POST' });
-      setCode({ code: r.code, link: `${window.location.origin}${r.path}` });
-      setCodeSet(true);
+      await api('/api/partner/player-sessions/revoke', { method: 'POST' });
+      setCode(null);
+      setCodeSet(false);
+      setMsg({ kind: 'ok', text: 'Todas as TVs foram desconectadas. Gere um código novo para conectar de novo.' });
     } catch (err) {
       setMsg({ kind: 'error', text: errorMessage(err) });
     } finally {
+      setRevoking(false);
       setBusy(false);
     }
   }
@@ -94,26 +93,33 @@ export function TvAccount() {
               <button className="btn" type="button" onClick={() => copy(code.link)}>Copiar link</button>
               <button className="btn" type="button" onClick={() => copy(code.code)}>Copiar código</button>
             </div>
-            <p className="muted">Anote agora: por segurança o código não é mostrado de novo. TVs já conectadas continuam funcionando.</p>
+            <p className="muted">
+              Vale até {new Date(code.expiresAt).toLocaleString('pt-BR')} e não é mostrado de novo. TVs já conectadas continuam funcionando.
+            </p>
           </div>
         ) : (
-          codeSet && <p className="muted">Já existe um código de acesso. Gere um novo se precisar conectar outra TV ou se ele foi perdido.</p>
+          codeSet && <p className="muted">Há um código de acesso válido. Gere um novo se precisar conectar outra TV e não tiver o código anotado.</p>
         )}
         <button className="btn btn-primary" type="button" disabled={busy} onClick={generateCode}>
           {codeSet ? 'Gerar novo código' : 'Gerar código de acesso'}
         </button>
       </div>
-      <details className="card">
-        <summary>Entrar com usuário e senha (opcional)</summary>
-        <p>Usuário: <strong>{login ?? '…'}</strong></p>
-        <p className="muted">Trocar a senha desconecta todas as TVs deste estabelecimento.</p>
-        <form className="form" onSubmit={save}>
-          <Field label="Nova senha da TV">
-            <input type="password" minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          </Field>
-          <div><button className="btn btn-primary" type="submit" disabled={busy}>Definir senha</button></div>
-        </form>
-      </details>
+      <div className="card">
+        <h2>TVs conectadas</h2>
+        <p className="muted">Se um código vazou ou uma TV saiu do estabelecimento, desconecte todas e conecte de novo com um código novo.</p>
+        <button className="btn btn-danger" type="button" disabled={busy} onClick={() => setRevoking(true)}>Desconectar todas as TVs</button>
+      </div>
+      <ConfirmDialog
+        open={revoking}
+        title="Desconectar todas as TVs"
+        confirmLabel="Desconectar"
+        danger
+        busy={busy}
+        onCancel={closeRevoke}
+        onConfirm={revoke}
+      >
+        As TVs param de exibir os anúncios até entrarem de novo com um código novo.
+      </ConfirmDialog>
       <div className="card">
         <h2>Transições</h2>
         <form className="form" onSubmit={saveTransition}>

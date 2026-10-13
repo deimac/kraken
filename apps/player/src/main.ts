@@ -1,7 +1,7 @@
 import { api } from './api';
 import { mountControls } from './controls';
 import { DomScreen } from './dom-screen';
-import { codeFromHash, loginWithCode, renderLogin } from './login';
+import { codeError, codeFromHash, loginWithCode, renderLogin } from './login';
 import { createManifestClient } from './manifest';
 import { runPlayer } from './player';
 import { createPlayQueue, playEvent } from './queue';
@@ -61,11 +61,12 @@ async function start() {
 async function boot() {
   // Opened from the panel's link: sign in with the code and drop it from the address bar.
   const code = codeFromHash(location.hash);
+  let refused: { code: string; error: string } | undefined;
   if (code) {
     history.replaceState(null, '', location.pathname + location.search);
-    if (!(await isTvSession())) await loginWithCode(code).catch(() => undefined);
+    if (!(await isTvSession())) await loginWithCode(code).catch((err) => (refused = { code, error: codeError(err) }));
   }
-  if (!(await isTvSession())) await renderLogin(root);
+  if (!(await isTvSession())) await renderLogin(root, refused);
   await start();
 }
 

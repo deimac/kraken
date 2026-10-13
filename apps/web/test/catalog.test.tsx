@@ -180,25 +180,25 @@ describe('ad plans', () => {
 
 
 describe('TV account', () => {
-  it('shows the TV login and sets a password', async () => {
+  it('disconnects every TV after confirmation', async () => {
     const calls = mockApi({
       'GET /api/auth/me': { user: partnerUser },
-      'GET /api/partner': { partner: { id: 'p1', name: 'Ironberg', slug: 'ironberg' } },
-      'PUT /api/partner/player-account': { login: 'tv@ironberg' },
+      'GET /api/partner': { partner: { id: 'p1', name: 'Ironberg', slug: 'ironberg', transition: 'fade', transitionMs: 600, tvCodeSet: true } },
+      'POST /api/partner/player-sessions/revoke': reply(204),
     });
     renderAt('/parceiro/tv');
-    expect(await screen.findByText('tv@ironberg')).toBeTruthy();
-    await userEvent.type(screen.getByLabelText('Nova senha da TV'), 'senha-tv-123');
-    await userEvent.click(screen.getByRole('button', { name: 'Definir senha' }));
-    expect(calls.find((c) => c.method === 'PUT')!.body).toEqual({ password: 'senha-tv-123' });
-    expect(await screen.findByText(/TVs conectadas foram desconectadas/)).toBeTruthy();
+    expect(screen.queryByLabelText('Nova senha da TV')).toBeNull();
+    await userEvent.click(await screen.findByRole('button', { name: 'Desconectar todas as TVs' }));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Desconectar' }));
+    expect(calls.some((c) => c.path === '/api/partner/player-sessions/revoke')).toBe(true);
+    expect(await screen.findByText(/TVs foram desconectadas/)).toBeTruthy();
   });
 
   it('generates a TV access code and link, no user or password needed', async () => {
     const calls = mockApi({
       'GET /api/auth/me': { user: partnerUser },
       'GET /api/partner': { partner: { id: 'p1', name: 'Ironberg', slug: 'ironberg', transition: 'fade', transitionMs: 600, tvCodeSet: false } },
-      'POST /api/partner/player-code': { code: 'K7QM-2XHB-9TRA-WD4N', path: '/player/#K7QM-2XHB-9TRA-WD4N' },
+      'POST /api/partner/player-code': { code: 'K7QM-2XHB-9TRA-WD4N', path: '/player/#K7QM-2XHB-9TRA-WD4N', expiresAt: '2026-10-14T12:00:00Z' },
     });
     renderAt('/parceiro/tv');
     await userEvent.click(await screen.findByRole('button', { name: 'Gerar código de acesso' }));
@@ -216,8 +216,7 @@ describe('TV account', () => {
     });
     renderAt('/parceiro/tv');
     const type = await screen.findByLabelText('Transição entre anúncios');
-    await screen.findByText('tv@ironberg');
-    expect((type as HTMLSelectElement).value).toBe('fade');
+    await waitFor(() => expect((type as HTMLSelectElement).value).toBe('fade'));
     await userEvent.selectOptions(type, 'slide');
     await userEvent.selectOptions(screen.getByLabelText('Duração'), '1000');
     await userEvent.click(screen.getByRole('button', { name: 'Salvar transição' }));

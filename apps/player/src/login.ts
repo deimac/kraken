@@ -2,14 +2,28 @@ import { ApiError, api } from './api';
 
 /** The panel's link opens the player as /player/#CODE: take the code from the address. */
 export function codeFromHash(hash: string): string | null {
-  const code = decodeURIComponent(hash.replace(/^#/, '')).trim();
+  let code: string;
+  try {
+    code = decodeURIComponent(hash.replace(/^#/, '')).trim();
+  } catch {
+    return null; // malformed link: fall back to typing the code
+  }
   return code.replace(/[^A-Za-z0-9]/g, '').length >= 8 ? code : null;
 }
 
 /** Signs the TV in with its access code; resolves when accepted. */
 export const loginWithCode = (code: string) => api('/api/player/code-login', { method: 'POST', body: { code } });
 
-export function renderLogin(root: HTMLElement): Promise<void> {
+/** Why a code was refused, in words for the TV screen. */
+export function codeError(err: unknown): string {
+  return err instanceof ApiError && err.status === 401
+    ? 'Código inválido ou expirado. Gere um novo no painel, em Conta da TV.'
+    : err instanceof ApiError && err.status === 429
+      ? 'Muitas tentativas. Aguarde um pouco.'
+      : 'Sem conexão. Tente de novo.';
+}
+
+export function renderLogin(root: HTMLElement, initial: { code?: string; error?: string } = {}): Promise<void> {
   root.innerHTML = `
     <div class="login">
       <img class="brand-mark" src="/player/kraken-symbol.png" alt="" />
@@ -23,7 +37,10 @@ export function renderLogin(root: HTMLElement): Promise<void> {
     </div>`;
   const form = root.querySelector('form')!;
   const error = root.querySelector('.error')!;
-  (root.querySelector('input[name=code]') as HTMLInputElement).focus();
+  const input = root.querySelector('input[name=code]') as HTMLInputElement;
+  input.value = initial.code ?? '';
+  error.textContent = initial.error ?? '';
+  input.focus();
 
   return new Promise((resolve) => {
     form.addEventListener('submit', async (e) => {
@@ -34,12 +51,7 @@ export function renderLogin(root: HTMLElement): Promise<void> {
         await loginWithCode(code);
         resolve();
       } catch (err) {
-        error.textContent =
-          err instanceof ApiError && err.status === 401
-            ? 'Código inválido. Confira no painel, em Conta da TV.'
-            : err instanceof ApiError && err.status === 429
-              ? 'Muitas tentativas. Aguarde um pouco.'
-              : 'Sem conexão. Tente de novo.';
+        error.textContent = codeError(err);
       }
     });
   });

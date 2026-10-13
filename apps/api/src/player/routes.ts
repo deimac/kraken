@@ -1,4 +1,4 @@
-import { and, eq, isNull, lt, or } from 'drizzle-orm';
+import { and, eq, gt, isNull, lt, or } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { requireRole } from '../auth/guard';
@@ -32,7 +32,7 @@ export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean; v
       .select({ id: users.id, email: users.email, role: users.role, partnerId: users.partnerId, advertiserId: users.advertiserId })
       .from(partners)
       .innerJoin(users, and(eq(users.partnerId, partners.id), eq(users.role, 'player')))
-      .where(and(eq(partners.tvCodeHash, hashTvCode(body.code)), eq(partners.status, 'active')));
+      .where(and(eq(partners.tvCodeHash, hashTvCode(body.code)), gt(partners.tvCodeExpiresAt, new Date()), eq(partners.status, 'active')));
     if (!user) return reply.code(401).send({ error: 'invalid_code' });
     const { token, expiresAt } = await createSession(db, user);
     setSessionCookie(reply, token, expiresAt, cookieSecure, TV_COOKIE);

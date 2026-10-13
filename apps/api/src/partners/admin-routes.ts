@@ -7,6 +7,7 @@ import type { Db } from '../db/client';
 import { isUniqueViolation } from '../db/errors';
 import { krakenPlans, partners, users } from '../db/schema';
 import { parse } from '../http/validation';
+import { visiblePartner } from './visible';
 
 const Slug = z.string().max(60).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/);
 const Weight = z.number().int().min(1).max(100);
@@ -45,7 +46,7 @@ export const adminPartnerRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { 
   app.addHook('preHandler', requireRole('admin'));
 
   app.get('/api/admin/partners', async () => ({
-    partners: await db.select().from(partners).orderBy(asc(partners.name)),
+    partners: (await db.select().from(partners).orderBy(asc(partners.name))).map(visiblePartner),
   }));
 
   app.post('/api/admin/partners', async (req, reply) => {
@@ -53,7 +54,7 @@ export const adminPartnerRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { 
     if (!body) return reply;
     try {
       const [partner] = await db.insert(partners).values(body).returning();
-      return reply.code(201).send({ partner });
+      return reply.code(201).send({ partner: visiblePartner(partner!) });
     } catch (err) {
       if (isUniqueViolation(err)) return reply.code(409).send({ error: 'slug_taken' });
       throw err;
@@ -75,7 +76,7 @@ export const adminPartnerRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { 
       .where(eq(partners.id, params.id))
       .returning();
     if (!partner) return reply.code(404).send({ error: 'not_found' });
-    return { partner };
+    return { partner: visiblePartner(partner) };
   });
 
   app.post('/api/admin/partners/:id/users', async (req, reply) => {

@@ -39,9 +39,18 @@ describe('TV sign-in with the access code', () => {
     await vi.waitFor(() => expect(root.textContent).toContain('Muitas tentativas'));
   });
 
+  it('shows why the code from the link was refused, with the code filled in', () => {
+    vi.stubGlobal('fetch', vi.fn());
+    const root = document.body.appendChild(document.createElement('div'));
+    void renderLogin(root, { code: 'AAAA-BBBB-CCCC-DDDD', error: 'Código inválido ou expirado.' });
+    expect((root.querySelector('input[name=code]') as HTMLInputElement).value).toBe('AAAA-BBBB-CCCC-DDDD');
+    expect(root.textContent).toContain('Código inválido ou expirado.');
+  });
+
   it('reads the code from the link the partner opened', () => {
     expect(codeFromHash('#K7QM-2XHB-9TRA-WD4N')).toBe('K7QM-2XHB-9TRA-WD4N');
     expect(codeFromHash('')).toBeNull();
     expect(codeFromHash('#x')).toBeNull();
+    expect(codeFromHash('#%E0%A4%A')).toBeNull(); // malformed escape must not break the player
   });
 });

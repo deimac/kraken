@@ -1,0 +1,1 @@
+ALTER TABLE "partners" ADD COLUMN "tv_code_expires_at" timestamp with time zone;

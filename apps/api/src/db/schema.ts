@@ -41,6 +41,7 @@ export const partners = pgTable(
     transitionMs: integer('transition_ms').notNull().default(600),
     tvLastSeenAt: timestamp('tv_last_seen_at', { withTimezone: true }), // last manifest fetch by the partner's TV
     tvCodeHash: text('tv_code_hash').unique(), // sha256 of the TV access code (sign in without user/password)
+    tvCodeExpiresAt: timestamp('tv_code_expires_at', { withTimezone: true }),
     ...timestamps,
   },
   (t) => [

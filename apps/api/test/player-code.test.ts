@@ -1,4 +1,6 @@
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { partners } from '../src/db/schema';
 import { createTestApp, seed } from './helpers/app';
 
 let t: Awaited<ReturnType<typeof createTestApp>>;
@@ -59,5 +61,26 @@ describe('TV access code', () => {
     await t.app.inject({ method: 'PUT', url: '/api/partner/player-account', headers: { cookie: s.gerenteA }, payload: { password: 'senha-tv-123' } });
     const res = await post('/api/player/login', { email: 'tv@parceiro-a', password: 'senha-tv-123' }, undefined, '10.1.0.5');
     expect(res.statusCode).toBe(200);
+  });
+
+  it('codes expire after 24 hours', async () => {
+    const res = (await post('/api/partner/player-code', undefined, s.gerenteA)).json();
+    expect(new Date(res.expiresAt).getTime() - Date.now()).toBeGreaterThan(23 * 3_600_000);
+    await t.db.update(partners).set({ tvCodeExpiresAt: new Date(Date.now() - 1000) }).where(eq(partners.id, s.partnerA.id));
+    expect((await post('/api/player/code-login', { code: res.code }, undefined, '10.1.0.6')).json()).toEqual({ error: 'invalid_code' });
+  });
+
+  it('partner can disconnect every TV', async () => {
+    const { code } = (await post('/api/partner/player-code', undefined, s.gerenteA)).json();
+    const cookie = tvCookie(await post('/api/player/code-login', { code }, undefined, '10.1.0.7'))!;
+    expect((await post('/api/partner/player-sessions/revoke', undefined, s.gerenteA)).statusCode).toBe(204);
+    expect((await t.app.inject({ method: 'GET', url: '/api/player/manifest', headers: { cookie } })).statusCode).toBe(401);
+  });
+
+  it('never returns the code hash', async () => {
+    const settings = await t.app.inject({ method: 'PATCH', url: '/api/partner/settings', headers: { cookie: s.gerenteA }, payload: { transitionMs: 600 } });
+    expect(settings.json().partner.tvCodeHash).toBeUndefined();
+    const list = await t.app.inject({ method: 'GET', url: '/api/admin/partners', headers: { cookie: s.admin } });
+    expect(list.json().partners.every((p: Record<string, unknown>) => !('tvCodeHash' in p))).toBe(true);
   });
 });
