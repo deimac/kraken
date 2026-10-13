@@ -28,12 +28,14 @@ interface Deps {
   running(): boolean;
   onPlayed?(item: Item, result: PlayResult): void;
   idleMs?: number;
+  /** Source of randomness for a per-TV order (tests pass a fixed one). */
+  random?: () => number;
 }
 
 /** Identity of what the rotation depends on; polls returning the same content keep the rotation. */
 function signature(m: Manifest): string {
   const w = m.partner.weights;
-  return [w.low, w.medium, w.high, ...m.items.map((i) => `${i.campaignId}:${i.media.id}:${i.frequencyLevel}:${i.media.tvUrl ? 'tv' : ''}`)].join('|');
+  return [w.low, w.medium, w.high, m.partner.shuffle ? 'shuffle' : '', ...m.items.map((i) => `${i.campaignId}:${i.media.id}:${i.frequencyLevel}:${i.media.tvUrl ? 'tv' : ''}`)].join('|');
 }
 
 /** Plays ads forever, always preloading the next one while the current one is on screen. */
@@ -64,7 +66,7 @@ export async function runPlayer(deps: Deps): Promise<void> {
       const sig = signature(m);
       if (sig !== sourceSignature) {
         sourceSignature = sig;
-        rotation = createRotation(m.items, m.partner.weights);
+        rotation = createRotation(m.items, m.partner.weights, m.partner.shuffle ? { random: deps.random ?? Math.random } : {});
         const stillListed =
           pending !== null && m.items.some((i) => i.campaignId === pending!.item.campaignId && i.media.id === pending!.item.media.id);
         if (!stillListed) pending = null;

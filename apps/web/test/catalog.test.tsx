@@ -233,22 +233,38 @@ describe('TV account', () => {
     expect(screen.getByText(/readyState=1/)).toBeTruthy();
     expect(screen.getByText(/Silk/)).toBeTruthy();
   });
-
-  it('lets the partner choose the transition and how often TVs look for new ads', async () => {
-    const calls = mockApi({
+  it('keeps only TV access here; display options live in Configurações', async () => {
+    mockApi({
       'GET /api/auth/me': { user: partnerUser },
-      'GET /api/partner': { partner: { id: 'p1', name: 'Ironberg', slug: 'ironberg', transition: 'fade', transitionMs: 600, refreshSeconds: 300 } },
-      'PATCH /api/partner/settings': (b: unknown) => ({ partner: { id: 'p1', slug: 'ironberg', ...(b as object) } }),
+      'GET /api/partner': { partner: { id: 'p1', name: 'Ironberg', slug: 'ironberg', transition: 'fade', transitionMs: 600 } },
     });
     renderAt('/parceiro/tv');
+    expect(await screen.findByText('Acesso direto')).toBeTruthy();
+    expect(screen.queryByLabelText('Transição entre anúncios')).toBeNull();
+    const links = screen.getAllByRole('link', { name: /Configurações/ }).map((l) => l.getAttribute('href'));
+    expect(links.length).toBeGreaterThanOrEqual(2); // in the menu and in the page text
+    expect(new Set(links)).toEqual(new Set(['/parceiro/configuracoes']));
+  });
+});
+
+describe('partner settings', () => {
+  it('sets the transition, how often TVs look for new ads and the ad order', async () => {
+    const calls = mockApi({
+      'GET /api/auth/me': { user: partnerUser },
+      'GET /api/partner': { partner: { id: 'p1', name: 'Ironberg', slug: 'ironberg', transition: 'fade', transitionMs: 600, refreshSeconds: 300, shuffle: true } },
+      'PATCH /api/partner/settings': (b: unknown) => ({ partner: { id: 'p1', slug: 'ironberg', ...(b as object) } }),
+    });
+    renderAt('/parceiro/configuracoes');
     const type = await screen.findByLabelText('Transição entre anúncios');
     await waitFor(() => expect((type as HTMLSelectElement).value).toBe('fade'));
     expect((screen.getByLabelText('Buscar anúncios novos a cada') as HTMLSelectElement).value).toBe('300');
+    expect((screen.getByLabelText('Ordem dos anúncios') as HTMLSelectElement).value).toBe('shuffle');
     await userEvent.selectOptions(type, 'slide');
     await userEvent.selectOptions(screen.getByLabelText('Duração'), '1000');
     await userEvent.selectOptions(screen.getByLabelText('Buscar anúncios novos a cada'), '15');
+    await userEvent.selectOptions(screen.getByLabelText('Ordem dos anúncios'), 'same');
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }));
-    expect(calls.find((c) => c.method === 'PATCH')!.body).toEqual({ transition: 'slide', transitionMs: 1000, refreshSeconds: 15 });
+    expect(calls.find((c) => c.method === 'PATCH')!.body).toEqual({ transition: 'slide', transitionMs: 1000, refreshSeconds: 15, shuffle: false });
     expect(await screen.findByText('Configurações salvas. As TVs aplicam na próxima busca por anúncios.')).toBeTruthy();
   });
 });

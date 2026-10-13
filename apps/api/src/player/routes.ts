@@ -80,6 +80,7 @@ export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean; v
         transition: partners.transition,
         transitionMs: partners.transitionMs,
         refreshSeconds: partners.refreshSeconds,
+        shuffle: partners.shuffle,
       })
       .from(partners)
       .where(eq(partners.id, partnerId));
@@ -106,6 +107,7 @@ export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean; v
         transition: p!.transition,
         transitionMs: p!.transitionMs,
         refreshSeconds: p!.refreshSeconds,
+        shuffle: p!.shuffle,
       },
       items: items.map(({ media: { tvReady, tvVersion, posterReady, ...m }, ...i }) => ({
         ...i,

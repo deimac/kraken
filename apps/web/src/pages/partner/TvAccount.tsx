@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { api } from '../../api';
 import { errorMessage } from '../../messages';
-import type { Transition } from '../../types';
-import { ConfirmDialog, Field, Notice, PageHeader } from '../../ui';
+import { ConfirmDialog, Notice, PageHeader } from '../../ui';
 
 interface TvEvent { kind: string; detail?: string; at: string; userAgent: string | null }
 
@@ -53,17 +53,11 @@ function TvDiagnostics() {
 
 interface PartnerTv {
   slug: string;
-  transition: Transition;
-  transitionMs: number;
   tvCodeSet?: boolean;
   playerOpen?: boolean;
-  refreshSeconds?: number;
 }
 
 export function TvAccount() {
-  const [transition, setTransition] = useState<Transition>('fade');
-  const [transitionMs, setTransitionMs] = useState(600);
-  const [refreshSeconds, setRefreshSeconds] = useState(300);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [codeSet, setCodeSet] = useState(false);
@@ -76,9 +70,6 @@ export function TvAccount() {
   useEffect(() => {
     api<{ partner: PartnerTv }>('/api/partner')
       .then((r) => {
-        setTransition(r.partner.transition);
-        setTransitionMs(r.partner.transitionMs);
-        setRefreshSeconds(r.partner.refreshSeconds ?? 300);
         setCodeSet(Boolean(r.partner.tvCodeSet));
         setSlug(r.partner.slug);
         setOpen(Boolean(r.partner.playerOpen));
@@ -130,22 +121,12 @@ export function TvAccount() {
 
   const copy = (text: string) => navigator.clipboard?.writeText(text).then(() => setMsg({ kind: 'ok', text: 'Copiado.' }));
 
-  async function saveTransition(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      await api('/api/partner/settings', { method: 'PATCH', body: { transition, transitionMs, refreshSeconds } });
-      setMsg({ kind: 'ok', text: 'Configurações salvas. As TVs aplicam na próxima busca por anúncios.' });
-    } catch (err) {
-      setMsg({ kind: 'error', text: errorMessage(err) });
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <>
       <PageHeader title="Conta da TV" />
+      <p className="muted">
+        Transição, frequência de atualização e ordem dos anúncios ficam em <Link to="/parceiro/configuracoes">Configurações</Link>.
+      </p>
       {msg && <Notice kind={msg.kind}>{msg.text}</Notice>}
       <div className="card">
         <h2>Acesso direto</h2>
@@ -207,37 +188,6 @@ export function TvAccount() {
       >
         As TVs param de exibir os anúncios até entrarem de novo com um código novo.
       </ConfirmDialog>
-      <div className="card">
-        <h2>Exibição na TV</h2>
-        <form className="form" onSubmit={saveTransition}>
-          <Field label="Transição entre anúncios">
-            <select value={transition} onChange={(e) => setTransition(e.target.value as Transition)}>
-              <option value="fade">Esmaecer</option>
-              <option value="slide">Deslizar</option>
-              <option value="cut">Corte seco</option>
-            </select>
-          </Field>
-          <Field label="Duração">
-            <select value={String(transitionMs)} onChange={(e) => setTransitionMs(Number(e.target.value))} disabled={transition === 'cut'}>
-              <option value="300">0,3 s</option>
-              <option value="600">0,6 s</option>
-              <option value="1000">1 s</option>
-              <option value="1500">1,5 s</option>
-              <option value="2000">2 s</option>
-            </select>
-          </Field>
-          <Field label="Buscar anúncios novos a cada">
-            <select value={String(refreshSeconds)} onChange={(e) => setRefreshSeconds(Number(e.target.value))}>
-              <option value="15">15 segundos (testes)</option>
-              <option value="30">30 segundos</option>
-              <option value="60">1 minuto</option>
-              <option value="300">5 minutos (recomendado)</option>
-            </select>
-          </Field>
-          <p className="muted" style={{ margin: 0 }}>Assinaturas e peças novas aparecem nas TVs dentro desse intervalo, sem recarregar.</p>
-          <div><button className="btn btn-primary" type="submit" disabled={busy}>Salvar</button></div>
-        </form>
-      </div>
     </>
   );
 }

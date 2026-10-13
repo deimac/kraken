@@ -169,3 +169,22 @@ describe('runPlayer', () => {
   });
 });
 
+
+describe('runPlayer ad order', () => {
+  const ids = ['A', 'B', 'C', 'D', 'E'];
+  const order = async (shuffle: boolean, random: () => number) => {
+    const screen = new FakeScreen();
+    const m = manifest(ids.map((id) => item(id)));
+    m.partner.shuffle = shuffle;
+    await runPlayer({ screen, manifest: () => m, sleep: async () => {}, running: until(10), random });
+    return screen.log.filter((l) => l.startsWith('present')).join();
+  };
+
+  it('each TV draws its own order when the partner chose a different order per TV', async () => {
+    expect(await order(true, () => 0.99)).not.toBe(await order(true, () => 0.01));
+  });
+
+  it('every TV follows the same order otherwise', async () => {
+    expect(await order(false, () => 0.99)).toBe(await order(false, () => 0.01));
+  });
+});

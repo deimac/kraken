@@ -9,8 +9,12 @@ export interface Rotation {
  * pieces take turns inside its share, so adding pieces never changes how often a subscription airs.
  * Avoids playing the same subscription twice in a row only when another one is owed a turn, so the configured
  * proportion is never distorted.
+ *
+ * With `random` (a different order on each TV), ties are broken by lot instead of by list position and each
+ * subscription's pieces are reshuffled every lap: proportions stay exact, but each TV (and each round) gets its own order.
  */
-export function createRotation(items: Item[], weights: Record<Level, number>): Rotation {
+export function createRotation(items: Item[], weights: Record<Level, number>, opts: { random?: () => number } = {}): Rotation {
+  const { random } = opts;
   const groups = new Map<string, Item[]>();
   for (const item of items) {
     const list = groups.get(item.campaignId);
@@ -27,9 +31,10 @@ export function createRotation(items: Item[], weights: Record<Level, number>): R
     next() {
       if (entries.length === 0) return null;
       for (const e of entries) e.credit += e.weight;
-      let best = entries[0]!;
+      const order = random ? shuffle(entries, random) : entries;
+      let best = order[0]!;
       let second: (typeof entries)[number] | null = null;
-      for (const e of entries.slice(1)) {
+      for (const e of order.slice(1)) {
         if (e.credit > best.credit) {
           second = best;
           best = e;
@@ -40,9 +45,25 @@ export function createRotation(items: Item[], weights: Record<Level, number>): R
       const pick = best === last && second && second.credit > 0 ? second : best;
       pick.credit -= total;
       last = pick;
-      const piece = pick.pieces[pick.cursor % pick.pieces.length]!;
+      const lap = pick.cursor % pick.pieces.length;
+      if (random && lap === 0 && pick.pieces.length > 1) {
+        const previous = pick.pieces.at(-1)!;
+        pick.pieces = shuffle(pick.pieces, random);
+        // Never the same piece twice in a row across laps.
+        if (pick.pieces[0] === previous) pick.pieces.push(pick.pieces.shift()!);
+      }
+      const piece = pick.pieces[lap]!;
       pick.cursor += 1;
       return piece;
     },
   };
+}
+
+function shuffle<T>(list: T[], random: () => number): T[] {
+  const out = list.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
 }

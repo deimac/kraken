@@ -1,5 +1,6 @@
 import {
-  IconBuildingStore, IconChartBar, IconDeviceTv, IconHome, IconLogout, IconReceipt, IconReceipt2, IconSearch, IconSpeakerphone, IconTags, IconUsersGroup,
+  IconBuildingStore, IconChartBar, IconDeviceTv,
+  IconSettings, IconHome, IconLogout, IconReceipt, IconReceipt2, IconSearch, IconSpeakerphone, IconTags, IconUsersGroup,
 } from '@tabler/icons-react';
 import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
@@ -23,6 +24,7 @@ const NAV: Record<Exclude<Role, 'player'>, { to: string; label: string; icon: Re
     { to: '/parceiro/planos', label: 'Planos de anúncio', icon: <IconTags size={18} /> },
     { to: '/parceiro/tv', label: 'Conta da TV', icon: <IconDeviceTv size={18} /> },
     { to: '/parceiro/relatorios', label: 'Relatórios', icon: <IconChartBar size={18} /> },
+    { to: '/parceiro/configuracoes', label: 'Configurações', icon: <IconSettings size={18} /> },
   ],
   advertiser: [
     { to: '/anunciante/inicio', label: 'Início', icon: <IconHome size={18} /> },

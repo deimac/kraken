@@ -1,0 +1,1 @@
+ALTER TABLE "partners" ADD COLUMN "shuffle" boolean DEFAULT true NOT NULL;

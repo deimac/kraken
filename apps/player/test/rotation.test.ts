@@ -63,3 +63,56 @@ describe('createRotation', () => {
     expect(repeats(pieces)).toBe(0);
   });
 });
+
+describe('createRotation with a different order on each TV', () => {
+  // Small seeded generator: each "TV" gets its own sequence of random numbers.
+  const seeded = (seed: number) => () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const shuffled = (items: Item[], n: number, seed: number, field: 'campaignId' | 'media' = 'campaignId') => {
+    const r = createRotation(items, W, { random: seeded(seed) });
+    const seq: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const it = r.next()!;
+      seq.push(field === 'media' ? it.media.id : it.campaignId);
+    }
+    return seq;
+  };
+  const mix = [item('L', 'low'), item('M', 'medium'), item('H', 'high')];
+
+  it('keeps the 1:2:3 proportion and never airs the same subscription twice in a row', () => {
+    for (const seed of [1, 2, 3, 42]) {
+      const seq = shuffled(mix, 6000, seed);
+      expect(Math.abs(count(seq, 'L') - 1000)).toBeLessThanOrEqual(2);
+      expect(Math.abs(count(seq, 'M') - 2000)).toBeLessThanOrEqual(2);
+      expect(Math.abs(count(seq, 'H') - 3000)).toBeLessThanOrEqual(2);
+      expect(repeats(seq)).toBe(0);
+    }
+  });
+
+  it('two TVs do not follow the same order', () => {
+    const equal = ['A', 'B', 'C', 'D', 'E'].map((id) => item(id, 'low'));
+    expect(shuffled(equal, 30, 1).join()).not.toBe(shuffled(equal, 30, 2).join());
+  });
+
+  it('the order changes from one round to the next, not just where it starts', () => {
+    const equal = ['A', 'B', 'C', 'D', 'E'].map((id) => item(id, 'low'));
+    const seq = shuffled(equal, 50, 7);
+    const rounds = new Set<string>();
+    for (let i = 0; i < 50; i += 5) {
+      const round = seq.slice(i, i + 5);
+      expect(new Set(round).size).toBe(5); // every subscription once per round
+      rounds.add(round.join());
+    }
+    expect(rounds.size).toBeGreaterThan(1);
+    expect(repeats(seq)).toBe(0);
+  });
+
+  it('pieces of one subscription share its turns evenly, in varying order', () => {
+    const pieces = ['p1', 'p2', 'p3'].map((p) => item('S', 'low', p));
+    const seq = shuffled(pieces, 300, 5, 'media');
+    for (const p of ['m-p1', 'm-p2', 'm-p3']) expect(count(seq, p)).toBe(100);
+    expect(repeats(seq)).toBe(0);
+    const laps = new Set<string>();
+    for (let i = 0; i < 300; i += 3) laps.add(seq.slice(i, i + 3).join());
+    expect(laps.size).toBeGreaterThan(1);
+  });
+});

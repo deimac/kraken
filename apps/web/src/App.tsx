@@ -10,6 +10,7 @@ import { AdvertiserDetail } from './pages/partner/AdvertiserDetail';
 import { AdvertiserForm } from './pages/partner/AdvertiserForm';
 import { Advertisers } from './pages/partner/Advertisers';
 import { Plans } from './pages/partner/Plans';
+import { Settings } from './pages/partner/Settings';
 import { TvAccount } from './pages/partner/TvAccount';
 import { PublicPartner } from './pages/public/PublicPartner';
 import { Reports } from './pages/reports/Reports';
@@ -52,6 +53,7 @@ export function AppRoutes() {
         <Route path="anunciantes/:id/editar" element={<AdvertiserForm />} />
         <Route path="planos" element={<Plans />} />
         <Route path="tv" element={<TvAccount />} />
+        <Route path="configuracoes" element={<Settings />} />
         <Route path="relatorios" element={<Reports />} />
       </Route>
       <Route path="/anunciante" element={<RequireRole role="advertiser"><Layout role="advertiser" /></RequireRole>}>

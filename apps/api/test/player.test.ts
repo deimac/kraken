@@ -95,3 +95,12 @@ describe('how often TVs look for new ads', () => {
     expect((await req('GET', '/api/player/manifest', tv)).json().partner.refreshSeconds).toBe(15);
   });
 });
+
+describe('ad order on the TVs', () => {
+  it('is different on each TV by default and the partner can make every TV follow the same order', async () => {
+    expect((await req('GET', '/api/player/manifest', tv)).json().partner.shuffle).toBe(true);
+    expect((await req('PATCH', '/api/partner/settings', s.gerenteA, { shuffle: false })).json().partner.shuffle).toBe(false);
+    expect((await req('PATCH', '/api/partner/settings', s.gerenteA, { shuffle: 'sim' })).statusCode).toBe(400);
+    expect((await req('GET', '/api/player/manifest', tv)).json().partner.shuffle).toBe(false);
+  });
+});

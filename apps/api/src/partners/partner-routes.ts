@@ -20,6 +20,7 @@ const Settings = z
     transitionMs: z.number().int().min(0).max(3000),
     playerOpen: z.boolean(),
     refreshSeconds: z.union([z.literal(15), z.literal(30), z.literal(60), z.literal(300)]),
+    shuffle: z.boolean(),
   })
   .partial()
   .strict();

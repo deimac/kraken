@@ -46,6 +46,8 @@ export const partners = pgTable(
     playerOpen: boolean('player_open').notNull().default(false),
     // How often the TVs look for new ads (seconds). Short while testing, 5 minutes in normal operation.
     refreshSeconds: integer('refresh_seconds').notNull().default(300),
+    // Each TV plays the ads in its own random order (same proportions); false: every TV follows the same order.
+    shuffle: boolean('shuffle').notNull().default(true),
     ...timestamps,
   },
   (t) => [
