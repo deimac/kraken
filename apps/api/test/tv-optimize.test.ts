@@ -7,6 +7,8 @@ import { findFfmpeg, tvVideoArgs } from '../src/media/tv-optimize';
 import { probeMp4 } from '../src/media/mp4';
 import { createTestApp, multipart, seed } from './helpers/app';
 import { pj } from './helpers/fixtures';
+import { eq } from 'drizzle-orm';
+import { media } from '../src/db/schema';
 
 describe('TV video arguments', () => {
   it('produce uniform fragmented 1080p30 H.264 + AAC, adding silence when the ad has no sound', () => {
@@ -15,6 +17,7 @@ describe('TV video arguments', () => {
     expect(silent).toContain('-map 1:a:0');
     expect(silent).toContain('+frag_keyframe+empty_moov+default_base_moof');
     expect(silent).toContain('-profile:v high -level:v 4.0');
+    expect(silent).toContain('-bf 0'); // video starting with the audio: no hole between ads appended back to back
     const withSound = tvVideoArgs('in.mp4', 'out.mp4', true).join(' ');
     expect(withSound).not.toContain('anullsrc');
     expect(withSound).toContain('-map 0:a:0');
@@ -73,5 +76,17 @@ describe.skipIf(!ffmpeg)('TV optimization with ffmpeg', () => {
     expect(manifest.items[0].media.tvUrl).toMatch(new RegExp(`^/api/media/${id}/tv\\?v=\\w+$`));
     expect(manifest.items[0].media.posterUrl).toBe(`/api/media/${id}/poster`);
     expect(manifest.tvCodecs).toBe('avc1.640028, mp4a.40.2');
+
+    // A copy made by an older encoding profile (B-frames stalled TVs between ads) is redone on startup.
+    const current = (await t.db.select({ tvKey: media.tvKey }).from(media).where(eq(media.id, id)))[0]!.tvKey;
+    expect(current).toMatch(/\.tv2\.\w+\.mp4$/);
+    const old = current!.replace('.tv2.', '.tv.');
+    await (await import('node:fs/promises')).copyFile(t.storage.pathOf(current!), t.storage.pathOf(old));
+    await t.db.update(media).set({ tvKey: old }).where(eq(media.id, id));
+    await t.app.tvOptimizer!.backfill();
+    await t.app.tvOptimizer!.idle();
+    const redone = (await t.db.select({ tvKey: media.tvKey }).from(media).where(eq(media.id, id)))[0]!.tvKey;
+    expect(redone).toMatch(/\.tv2\.\w+\.mp4$/);
+    expect(redone).not.toBe(old);
   }, 120_000);
 });

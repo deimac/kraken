@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { rm } from 'node:fs/promises';
-import { and, eq, isNull, ne } from 'drizzle-orm';
+import { and, eq, isNull, ne, notLike, or } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
 import type { Db } from '../db/client';
 import { media } from '../db/schema';
@@ -29,7 +29,7 @@ export function tvVideoArgs(input: string, output: string, hasAudio: boolean): s
     // Two threads: the VPS also serves the panel and the TVs while this runs.
     '-threads', '2',
     '-c:v', 'libx264', '-profile:v', 'high', '-level:v', '4.0', '-preset', 'veryfast', '-crf', '21',
-    '-g', '60', '-keyint_min', '60', '-sc_threshold', '0', '-x264-params', 'open-gop=0',
+    '-bf', '0', '-g', '60', '-keyint_min', '60', '-sc_threshold', '0', '-x264-params', 'open-gop=0',
     '-c:a', 'aac', '-b:a', '128k', '-ar', '48000', '-ac', '2',
     '-shortest',
     '-video_track_timescale', '90000',
@@ -76,6 +76,13 @@ export interface TvOptimizer {
   idle(): Promise<void>;
 }
 
+/**
+ * Encoding profile, part of each copy's file name. Bump it when tvVideoArgs changes in a way TVs depend on: copies of
+ * an older profile are redone on startup. tv2: no B-frames (their delayed first frame left holes between ads).
+ */
+const TV_PROFILE = 'tv2';
+const outdated = () => notLike(media.tvKey, `%.${TV_PROFILE}.%`);
+
 /** One video at a time, in the background: the VPS also serves the panel and the TVs. */
 export function createTvOptimizer(opts: { db: Db; storage: LocalStorage; ffmpeg: string; log: FastifyBaseLogger }): TvOptimizer {
   const { db, storage, ffmpeg, log } = opts;
@@ -84,9 +91,9 @@ export function createTvOptimizer(opts: { db: Db; storage: LocalStorage; ffmpeg:
 
   async function optimize(id: string) {
     const [row] = await db
-      .select({ id: media.id, storageKey: media.storageKey, partnerId: media.partnerId })
+      .select({ id: media.id, storageKey: media.storageKey, partnerId: media.partnerId, oldTvKey: media.tvKey })
       .from(media)
-      .where(and(eq(media.id, id), eq(media.mediaType, 'video'), isNull(media.tvKey)));
+      .where(and(eq(media.id, id), eq(media.mediaType, 'video'), or(isNull(media.tvKey), outdated())));
     if (!row) return;
     const video = storage.tmpPath();
     const poster = storage.tmpPath();
@@ -97,11 +104,12 @@ export function createTvOptimizer(opts: { db: Db; storage: LocalStorage; ffmpeg:
       await run(ffmpeg, posterArgs(video, `${poster}.jpg`));
       const prefix = row.partnerId ?? 'institutional';
       // Versioned name: a re-optimized file gets a new URL, so TVs never keep a stale cached copy.
-      const tvKey = `${prefix}/${id}.tv.${Date.now().toString(36)}.mp4`;
+      const tvKey = `${prefix}/${id}.${TV_PROFILE}.${Date.now().toString(36)}.mp4`;
       const posterKey = `${prefix}/${id}.poster.jpg`;
       await storage.saveFrom(video, tvKey);
       await storage.saveFrom(`${poster}.jpg`, posterKey);
       await db.update(media).set({ tvKey, posterKey, tvError: null }).where(eq(media.id, id));
+      if (row.oldTvKey) await storage.remove(row.oldTvKey).catch(() => undefined);
       log.info({ mediaId: id }, 'video optimized for TV');
     } catch (err) {
       log.warn({ err, mediaId: id }, 'video TV optimization failed');
@@ -122,7 +130,13 @@ export function createTvOptimizer(opts: { db: Db; storage: LocalStorage; ffmpeg:
       const rows = await db
         .select({ id: media.id })
         .from(media)
-        .where(and(eq(media.mediaType, 'video'), isNull(media.tvKey), isNull(media.tvError), ne(media.status, 'removed')));
+        .where(
+          and(
+            eq(media.mediaType, 'video'),
+            ne(media.status, 'removed'),
+            or(and(isNull(media.tvKey), isNull(media.tvError)), outdated()),
+          ),
+        );
       for (const r of rows) this.enqueue(r.id);
     },
     idle: () => chain,

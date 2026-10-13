@@ -74,12 +74,13 @@ export class MseSession {
         this.broken = true;
         return null;
       }
-      const end = bufferedEnd(sb, start);
+      const [dataStart, end] = lastRange(sb, start);
       if (end <= start) {
         this.broken = true;
         return null;
       }
-      const segment: Segment = { mediaId, start, end, played: false };
+      // Files whose video starts a few frames after the audio leave a small hole before the ad: start on its data.
+      const segment: Segment = { mediaId, start: Math.max(start, dataStart), end, played: false };
       this.segments.push(segment);
       return segment;
     };
@@ -126,7 +127,19 @@ export class MseSession {
   }
 }
 
-function bufferedEnd(sb: SourceBuffer, fallback: number): number {
+function lastRange(sb: SourceBuffer, fallback: number): [number, number] {
   const b = sb.buffered;
-  return b.length ? b.end(b.length - 1) : fallback;
+  return b.length ? [b.start(b.length - 1), b.end(b.length - 1)] : [fallback, fallback];
+}
+
+/** Where playback can resume when the playhead sits in a small hole between buffered ranges (TVs stall there). */
+export function holeEnd(video: HTMLVideoElement, maxHole = 1): number | null {
+  const b = video.buffered;
+  const t = video.currentTime;
+  if (!b) return null;
+  for (let i = 0; i < b.length; i++) {
+    if (t >= b.start(i) && t < b.end(i) - 0.05) return null; // inside data: not a hole
+    if (b.start(i) > t) return b.start(i) - t <= maxHole ? b.start(i) : null;
+  }
+  return null;
 }

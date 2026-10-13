@@ -7,24 +7,36 @@ import type { Item, Manifest } from '../src/types';
 const CODECS = 'avc1.640028, mp4a.40.2';
 const AD_SECONDS = 15;
 
-/** Minimal MediaSource: each appended ad adds 15 s to the timeline, as "sequence" mode would. */
+/**
+ * Minimal MediaSource: each appended ad adds 15 s to the timeline, as "sequence" mode would. `lead` mimics files whose
+ * video starts a little after the audio (B-frame delay): the buffered ranges then have a small hole before each ad.
+ */
 class FakeSourceBuffer extends EventTarget {
+  static lead = 0;
   mode = 'segments';
   updating = false;
   timestampOffset = 0;
   appended: number[] = [];
   removed: [number, number][] = [];
   fail = false;
-  private bufferedTo = 0;
-  buffered = { length: 0, end: () => this.bufferedTo };
+  private ranges: [number, number][] = [];
+  buffered = this.view();
+  private view() {
+    const r = this.ranges.map((x) => [...x] as [number, number]);
+    return { length: r.length, start: (i: number) => r[i]![0], end: (i: number) => r[i]![1] };
+  }
   appendBuffer(bytes: ArrayBuffer) {
     if (this.fail) throw new DOMException('full', 'QuotaExceededError');
     this.appended.push(bytes.byteLength);
     this.updating = true;
     queueMicrotask(() => {
       // Chromium sequence mode: frames go at the group start; timestampOffset does NOT become the end.
-      this.bufferedTo = Math.max(this.bufferedTo, this.timestampOffset + AD_SECONDS);
-      this.buffered = { length: 1, end: () => this.bufferedTo };
+      const from = this.timestampOffset + FakeSourceBuffer.lead;
+      const to = this.timestampOffset + AD_SECONDS;
+      const last = this.ranges.at(-1);
+      if (last && from <= last[1]) last[1] = Math.max(last[1], to);
+      else this.ranges.push([from, to]);
+      this.buffered = this.view();
       this.updating = false;
       this.dispatchEvent(new Event('updateend'));
     });
@@ -64,6 +76,7 @@ beforeEach(() => {
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
 });
 afterEach(() => {
+  FakeSourceBuffer.lead = 0;
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   document.body.innerHTML = '';
@@ -80,6 +93,15 @@ describe('MseSession', () => {
     expect(b).toMatchObject({ start: 15, end: 30 });
     expect(FakeMediaSource.last.sb.mode).toBe('sequence');
     expect(session.segments).toEqual([a, b]);
+  });
+
+  it('an ad whose video starts late begins where its data begins, not in the hole before it', async () => {
+    FakeSourceBuffer.lead = 0.066;
+    const session = new MseSession(document.createElement('video'), CODECS);
+    await session.append('a', new ArrayBuffer(4));
+    const b = await session.append('b', new ArrayBuffer(4));
+    expect(b!.start).toBeCloseTo(15.066, 3);
+    expect(b!.end).toBe(30);
   });
 });
 
@@ -110,6 +132,31 @@ describe('DomScreen with TV-optimized videos', () => {
     element.currentTime = 14.95;
     expect(await first).toBe('completed');
     const second = screen.present(tvVideo('b'));
+    element.currentTime = 29.95;
+    expect(await second).toBe('completed');
+  });
+
+  it('jumps the small hole between two ads instead of stalling in it', async () => {
+    FakeSourceBuffer.lead = 0.066;
+    const root = document.body.appendChild(document.createElement('div'));
+    const screen = new DomScreen(root, { loadTimeoutMs: 50 });
+    screen.setTvCodecs(CODECS);
+    const videos = root.querySelectorAll('video');
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    for (const v of videos) {
+      Object.defineProperty(v, 'paused', { get: () => false });
+      Object.defineProperty(v, 'readyState', { value: 4 });
+    }
+    expect(await screen.preload(tvVideo('a'))).toBe(true);
+    const element = [...videos].find((v) => v.getAttribute('src') === 'blob:ms')!;
+    const first = screen.present(tvVideo('a'));
+    await new Promise((r) => setTimeout(r, 700));
+    expect(await screen.preload(tvVideo('b'))).toBe(true);
+    element.currentTime = 15; // the first ad ended; the playhead sits in the hole and does not move
+    expect(await first).toBe('completed');
+    const second = screen.present(tvVideo('b'));
+    await new Promise((r) => setTimeout(r, 600));
+    expect(element.currentTime).toBeGreaterThanOrEqual(15.066);
     element.currentTime = 29.95;
     expect(await second).toBe('completed');
   });

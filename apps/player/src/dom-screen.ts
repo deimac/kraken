@@ -1,5 +1,5 @@
 import type { PlayResult, Screen } from './player';
-import { MseSession, mseSupported, type Segment } from './mse-sequence';
+import { MseSession, holeEnd, mseSupported, type Segment } from './mse-sequence';
 import type { Item, Transition } from './types';
 
 /** Something that went wrong on this TV, sent to the panel for diagnosis. */
@@ -312,6 +312,16 @@ export class DomScreen implements Screen {
         if (video.currentTime >= segment.end - 0.12) return finish('completed');
         still = video.currentTime === lastTime ? still + 100 : 0;
         lastTime = video.currentTime;
+        if (still >= 200) {
+          // Stuck in a hole between ads (or inside one): jump to where the data resumes, as Shaka's gap jumping does.
+          const t = video.currentTime;
+          const resume = t < segment.start && segment.start - t <= 1 ? segment.start : holeEnd(video);
+          if (resume !== null && resume > t) {
+            video.currentTime = resume + 0.001;
+            still = 0;
+            return;
+          }
+        }
         if (still >= this.stallTimeoutMs) {
           report({ kind: 'stalled', mediaId: segment.mediaId, detail: `mse at ${Math.round(video.currentTime)}s readyState=${video.readyState}` });
           finish('failed');

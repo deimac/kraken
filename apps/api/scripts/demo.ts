@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
+import { findFfmpeg } from '../src/media/tv-optimize';
 import { buildApp } from '../src/app';
 import { hashPassword } from '../src/auth/password';
 import type { Db } from '../src/db/client';
@@ -105,6 +106,7 @@ const app = await buildApp({
   db,
   storage,
   uploadLimits: { maxImageBytes: 10 * 1024 * 1024, maxVideoBytes: 200 * 1024 * 1024, minFreeBytes: 0, uploadsPerHour: 1000 },
+  ffmpeg: findFfmpeg(), // TV-optimized copies, as in production (skipped when ffmpeg is not installed)
   webDir: here('../../web/dist'),
   playerDir: here('../../player/dist'),
 });
