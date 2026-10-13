@@ -1,12 +1,16 @@
 import { and, eq, isNull, lt, or } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
 import { requireRole } from '../auth/guard';
 import { LOGIN_RATE_LIMIT, LoginBody, TV_COOKIE, checkCredentials, setSessionCookie } from '../auth/plugin';
 import { createSession, deleteSession, renewSession } from '../auth/sessions';
 import { listEligible } from '../campaigns/eligibility';
 import type { Db } from '../db/client';
-import { partners } from '../db/schema';
+import { partners, users } from '../db/schema';
 import { parse } from '../http/validation';
+import { hashTvCode } from './code';
+
+const CodeBody = z.object({ code: z.string().min(8).max(40) }).strict();
 
 export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean; version?: string }> = async (app, { db, cookieSecure, version }) => {
   app.post('/api/player/login', { config: { rateLimit: LOGIN_RATE_LIMIT } }, async (req, reply) => {
@@ -15,6 +19,21 @@ export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean; v
     const user = await checkCredentials(db, body.email, body.password);
     if (!user) return reply.code(401).send({ error: 'invalid_credentials' });
     if (user.role !== 'player') return reply.code(403).send({ error: 'not_tv_account' });
+    const { token, expiresAt } = await createSession(db, user);
+    setSessionCookie(reply, token, expiresAt, cookieSecure, TV_COOKIE);
+    return { user };
+  });
+
+  // Sign in with the TV access code generated in the panel (no user or password to type on the TV).
+  app.post('/api/player/code-login', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const body = parse(CodeBody, req.body, reply);
+    if (!body) return reply;
+    const [user] = await db
+      .select({ id: users.id, email: users.email, role: users.role, partnerId: users.partnerId, advertiserId: users.advertiserId })
+      .from(partners)
+      .innerJoin(users, and(eq(users.partnerId, partners.id), eq(users.role, 'player')))
+      .where(and(eq(partners.tvCodeHash, hashTvCode(body.code)), eq(partners.status, 'active')));
+    if (!user) return reply.code(401).send({ error: 'invalid_code' });
     const { token, expiresAt } = await createSession(db, user);
     setSessionCookie(reply, token, expiresAt, cookieSecure, TV_COOKIE);
     return { user };

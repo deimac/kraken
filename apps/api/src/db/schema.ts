@@ -40,6 +40,7 @@ export const partners = pgTable(
     transition: text('transition', { enum: ['fade', 'slide', 'cut'] }).notNull().default('fade'),
     transitionMs: integer('transition_ms').notNull().default(600),
     tvLastSeenAt: timestamp('tv_last_seen_at', { withTimezone: true }), // last manifest fetch by the partner's TV
+    tvCodeHash: text('tv_code_hash').unique(), // sha256 of the TV access code (sign in without user/password)
     ...timestamps,
   },
   (t) => [

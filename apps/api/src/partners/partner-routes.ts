@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { and, asc, eq } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -7,6 +8,7 @@ import { deleteUserSessions } from '../auth/sessions';
 import type { Db } from '../db/client';
 import { partners, users } from '../db/schema';
 import { parse } from '../http/validation';
+import { generateTvCode, hashTvCode } from '../player/code';
 
 const PlayerAccount = z.object({ password: z.string().min(8).max(200) }).strict();
 const Settings = z
@@ -19,8 +21,26 @@ export const partnerRoutes: FastifyPluginAsync<{ db: Db }> = async (app, { db })
   app.addHook('preHandler', requireRole('partner_user'));
 
   app.get('/api/partner', async (req) => {
-    const [partner] = await db.select().from(partners).where(eq(partners.id, req.user!.partnerId!));
-    return { partner };
+    const [row] = await db.select().from(partners).where(eq(partners.id, req.user!.partnerId!));
+    const { tvCodeHash, ...partner } = row!;
+    return { partner: { ...partner, tvCodeSet: tvCodeHash !== null } };
+  });
+
+  /** New TV access code (replaces the previous one; TVs already signed in stay signed in). Shown once. */
+  app.post('/api/partner/player-code', async (req) => {
+    const partnerId = req.user!.partnerId!;
+    const code = generateTvCode();
+    await db.transaction(async (tx) => {
+      const [player] = await tx.select({ id: users.id }).from(users).where(and(eq(users.partnerId, partnerId), eq(users.role, 'player')));
+      if (!player) {
+        const [p] = await tx.select({ slug: partners.slug }).from(partners).where(eq(partners.id, partnerId));
+        // Random password nobody knows: the TV signs in with the code; the partner can still set one later.
+        const passwordHash = await hashPassword(randomBytes(32).toString('base64url'));
+        await tx.insert(users).values({ email: `tv@${p!.slug}`, passwordHash, role: 'player', partnerId });
+      }
+      await tx.update(partners).set({ tvCodeHash: hashTvCode(code), updatedAt: new Date() }).where(eq(partners.id, partnerId));
+    });
+    return { code, path: `/player/#${code}` };
   });
 
   app.get('/api/partner/users', async (req) => ({
