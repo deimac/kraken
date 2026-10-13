@@ -174,37 +174,33 @@ export function ConfirmDialog(props: {
 const num = (v: number) => v.toLocaleString('pt-BR');
 
 /**
- * Single-series bar chart (no legend: the label names the series). Each bar is focusable and shows a tooltip;
- * a visually hidden table carries the same numbers for screen readers.
+ * Single-series bar chart (no legend: the caption names the series). The bars are visual only, with a mouse tooltip;
+ * screen readers and keyboard users get the same numbers from the table, so there are no extra tab stops.
  */
 export function BarChart({ label, data, format = (s) => s }: {
   label: string; data: { label: string; value: number }[]; format?: (label: string) => string;
 }) {
   const [active, setActive] = useState<number | null>(null);
+  const captionId = useId();
   const max = Math.max(1, ...data.map((d) => d.value));
-  const every = data.length > 10 ? 2 : 1;
+  // Keep axis labels readable: at most ~8 of them, always including the last day.
+  const every = Math.max(1, Math.ceil(data.length / 8));
   return (
-    <figure className="chart" aria-label={label}>
-      <div className="chart-max" aria-hidden="true">{num(max)}</div>
-      <div className="chart-plot" onMouseLeave={() => setActive(null)}>
-        {data.map((d, i) => (
-          <div
-            key={d.label}
-            className="chart-col"
-            role="img"
-            aria-label={`${format(d.label)}: ${num(d.value)}`}
-            tabIndex={0}
-            onMouseEnter={() => setActive(i)}
-            onFocus={() => setActive(i)}
-            onBlur={() => setActive(null)}
-          >
-            <div className="chart-bar" style={{ height: `${(d.value / max) * 100}%` }} />
-            {active === i && <div className="chart-tip" role="tooltip">{format(d.label)}: {num(d.value)}</div>}
-          </div>
-        ))}
-      </div>
-      <div className="chart-axis" aria-hidden="true">
-        {data.map((d, i) => <span key={d.label}>{i % every === (data.length - 1) % every ? format(d.label) : ''}</span>)}
+    <figure className="chart" aria-labelledby={captionId}>
+      <figcaption id={captionId} className="visually-hidden">{label}</figcaption>
+      <div aria-hidden="true">
+        <div className="chart-max">{num(max)}</div>
+        <div className="chart-plot" onMouseLeave={() => setActive(null)}>
+          {data.map((d, i) => (
+            <div key={d.label} className="chart-col" data-label={d.label} onMouseEnter={() => setActive(i)}>
+              <div className="chart-bar" style={{ height: `${(d.value / max) * 100}%` }} />
+              {active === i && <div className="chart-tip">{format(d.label)}: {num(d.value)}</div>}
+            </div>
+          ))}
+        </div>
+        <div className="chart-axis">
+          {data.map((d, i) => <span key={d.label}>{(data.length - 1 - i) % every === 0 ? format(d.label) : ''}</span>)}
+        </div>
       </div>
       <table className="visually-hidden">
         <caption>{label}</caption>

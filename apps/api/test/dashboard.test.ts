@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { advertisers, campaigns, media, plans, plays } from '../src/db/schema';
 import { createTestApp, seed } from './helpers/app';
-import { createUser, login, loginTv } from './helpers/fixtures';
+import { createPartner, createUser, login, loginTv } from './helpers/fixtures';
 
 let t: Awaited<ReturnType<typeof createTestApp>>;
 let s: Awaited<ReturnType<typeof seed>>;
@@ -46,6 +46,7 @@ beforeAll(async () => {
   const live = await subscription(s.partnerA.id, advA!.id, { pieces: ['approved', 'approved', 'pending_review'] });
   const expiring = await subscription(s.partnerA.id, advA!.id, { endsIn: 10 });
   await subscription(s.partnerA.id, advA!.id, { status: 'paused', endsIn: 5 });
+  await subscription(s.partnerA.id, advA!.id, { pieces: ['pending_review'] }); // active but nothing approved: not on air
   await subscription(s.partnerA.id, advA!.id, { status: 'cancelled', endsIn: 5 });
   const other = await subscription(s.partnerB.id, advB!.id);
   await record(live, s.partnerA.id, now - 1000, 3);
@@ -62,7 +63,7 @@ describe('partner dashboard', () => {
     const body = (await get('/api/dashboard', s.gerenteA)).json();
     expect(body.role).toBe('partner');
     expect(body.stats).toMatchObject({
-      live: 2, paused: 1, advertisers: 1, pendingPieces: 1, paymentPending: 3, playsToday: 3, plays7d: 5,
+      live: 2, paused: 1, advertisers: 1, pendingPieces: 2, paymentPending: 3, playsToday: 3, plays7d: 5,
     });
     expect(body.expiring.map((e: { name: string }) => e.name)).toEqual(['S']);
     expect(body.days).toHaveLength(14);
@@ -89,7 +90,7 @@ describe('advertiser and admin dashboards', () => {
   it('advertiser sees only its own subscriptions and plays', async () => {
     const body = (await get('/api/dashboard', advCookie)).json();
     expect(body.role).toBe('advertiser');
-    expect(body.stats).toMatchObject({ live: 2, livePieces: 3, pendingPieces: 1, playsToday: 3, plays7d: 5 });
+    expect(body.stats).toMatchObject({ live: 2, livePieces: 3, pendingPieces: 2, playsToday: 3, plays7d: 5 });
   });
 
   it('admin sees the whole network', async () => {
@@ -100,5 +101,24 @@ describe('advertiser and admin dashboards', () => {
 
   it('requires a panel session', async () => {
     expect((await get('/api/dashboard')).statusCode).toBe(401);
+  });
+});
+
+describe('Brasília day boundaries', () => {
+  afterAll(() => vi.useRealTimers());
+
+  it('counts a play at 23:30 in Brasília (02:30 UTC next day) on the Brasília day', async () => {
+    const partner = await createPartner(t.db, 'fuso');
+    await createUser(t.db, { email: 'g@fuso.com', password: 'senha-forte-1', role: 'partner_user', partnerId: partner.id });
+    const cookie = await login(t.app, 'g@fuso.com', 'senha-forte-1');
+    const [adv] = await t.db.insert(advertisers).values({ partnerId: partner.id, name: 'F', source: 'manual' }).returning();
+    const sub = await subscription(partner.id, adv!.id);
+    await record(sub, partner.id, Date.parse('2026-10-14T02:30:00Z'), 4); // 13/10 23:30 in Brasília
+    await record(sub, partner.id, Date.parse('2026-10-14T03:05:00Z'), 1); // 14/10 00:05 in Brasília
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-14T03:10:00Z') });
+    const body = (await get('/api/dashboard', cookie)).json();
+    vi.useRealTimers();
+    expect(body.stats.playsToday).toBe(1);
+    expect(body.days.slice(-2)).toEqual([{ day: '2026-10-13', count: 4 }, { day: '2026-10-14', count: 1 }]);
   });
 });

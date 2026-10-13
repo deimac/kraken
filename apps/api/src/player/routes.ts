@@ -48,11 +48,15 @@ export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean; v
       const renewed = await renewSession(db, token);
       if (renewed) setSessionCookie(reply, token, renewed, cookieSecure, TV_COOKIE);
     }
-    // "TV online" on the dashboard; written at most once a minute per partner.
-    await db
-      .update(partners)
-      .set({ tvLastSeenAt: new Date() })
-      .where(and(eq(partners.id, partnerId), or(isNull(partners.tvLastSeenAt), lt(partners.tvLastSeenAt, new Date(Date.now() - 60_000)))));
+    // "TV online" on the dashboard; written at most once a minute per partner. Never let it break the manifest.
+    try {
+      await db
+        .update(partners)
+        .set({ tvLastSeenAt: new Date() })
+        .where(and(eq(partners.id, partnerId), or(isNull(partners.tvLastSeenAt), lt(partners.tvLastSeenAt, new Date(Date.now() - 60_000)))));
+    } catch (err) {
+      req.log.warn({ err, partnerId }, 'tv heartbeat not recorded');
+    }
     const items = await listEligible(db, partnerId);
     return {
       partner: {

@@ -80,7 +80,7 @@ export function Dashboard() {
             <StatCard icon={<IconChartBar size={20} />} label="Inserções hoje" value={v(s, 'playsToday')} hint={`${v(s, 'plays7d')} em 7 dias`} />
             <StatCard icon={<IconBuildingStore size={20} />} label="Anunciantes" value={v(s, 'advertisers')} />
             <StatCard icon={<IconHourglass size={20} />} label="Peças aguardando" value={v(s, 'pendingPieces')} />
-            <StatCard icon={<IconCash size={20} />} label="A receber" value={v(s, 'paymentPending')} hint="assinaturas com pagamento pendente" />
+            <StatCard icon={<IconCash size={20} />} label="Pagamentos pendentes" value={v(s, 'paymentPending')} hint="assinaturas no ar ou agendadas" />
           </div>
           {(s.pendingPieces ?? 0) > 0 && (
             <Notice kind="info">

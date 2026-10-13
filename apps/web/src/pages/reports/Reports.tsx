@@ -73,6 +73,7 @@ export function Reports() {
           <BarChart label="Inserções por dia no período" data={perDay} format={(d) => `${d.slice(8, 10)}/${d.slice(5, 7)}`} />
         </div>
       )}
+      {rows && rows.length > 0 && !perDay && <p className="muted">O gráfico por dia aparece para períodos de até 62 dias.</p>}
       <div className="list">
         {rows?.map((r) => (
           <div key={r.campaignId}>

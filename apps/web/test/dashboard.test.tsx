@@ -28,7 +28,7 @@ describe('home dashboard', () => {
     expect(await screen.findByRole('heading', { name: 'Início' })).toBeTruthy();
     expect(stat('No ar')).toContain('2');
     expect(stat('Peças aguardando')).toContain('3');
-    expect(stat('A receber')).toContain('2');
+    expect(stat('Pagamentos pendentes')).toContain('2');
     expect(stat('Inserções hoje')).toContain('12');
     expect(screen.getByText('TV offline')).toBeTruthy();
     expect(screen.getByRole('link', { name: /Loja Fit · Ouro/ }).getAttribute('href')).toBe('/parceiro/assinaturas/c1');
@@ -69,17 +69,19 @@ describe('home dashboard', () => {
 });
 
 describe('BarChart', () => {
-  it('has an accessible table and a tooltip on hover and focus', async () => {
+  it('exposes the numbers as a table and shows a tooltip on hover', async () => {
     render(<BarChart label="Inserções por dia" data={days.map((d) => ({ label: d.day, value: d.count }))} format={(d) => d.slice(8, 10) + '/' + d.slice(5, 7)} />);
     expect(screen.getByRole('figure', { name: 'Inserções por dia' })).toBeTruthy();
     expect(screen.getByRole('cell', { name: '40' })).toBeTruthy();
-    const bar = screen.getByRole('img', { name: '12/10: 40' });
-    await userEvent.hover(bar);
-    expect(screen.getByRole('tooltip').textContent).toBe('12/10: 40');
+    // screen readers get the table; the bars are decoration with a mouse tooltip and no tab stops
+    expect(screen.queryAllByRole('img')).toHaveLength(0);
+    expect(document.querySelectorAll('[tabindex]')).toHaveLength(0);
+    await userEvent.hover(document.querySelector('[data-label="2026-10-12"]')!);
+    expect(screen.getByText('12/10: 40')).toBeTruthy();
   });
 
   it('draws an all-zero series without breaking', () => {
     render(<BarChart label="Vazio" data={[{ label: 'a', value: 0 }, { label: 'b', value: 0 }]} />);
-    expect(screen.getAllByRole('img')).toHaveLength(2);
+    expect(document.querySelectorAll('.chart-col')).toHaveLength(2);
   });
 });
