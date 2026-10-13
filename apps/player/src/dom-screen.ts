@@ -14,6 +14,9 @@ interface Layer {
   img: HTMLImageElement;
 }
 
+const MAX_PREFETCH_BYTES = 80 * 1024 * 1024;
+const MAX_PREFETCHED = 3;
+
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const withTimeout = <T>(p: Promise<T>, ms: number, fallback: T) => Promise.race([p, sleep(ms).then(() => fallback)]);
 
@@ -28,6 +31,8 @@ export class DomScreen implements Screen {
   private readonly loadTimeoutMs: number;
   private readonly stallTimeoutMs: number;
   private readonly onIssue: (issue: ScreenIssue) => void;
+  /** mediaId → object URL of a video downloaded ahead (at most a couple, to spare the TV's memory). */
+  private readonly prefetched = new Map<string, Promise<string | null>>();
 
   constructor(
     root: HTMLElement,
@@ -110,7 +115,9 @@ export class DomScreen implements Screen {
     video.addEventListener('canplay', onReady);
     video.addEventListener('canplaythrough', onReady);
     video.addEventListener('error', onError);
-    video.src = item.media.url;
+    const ahead = this.prefetched.get(item.media.id);
+    const local = ahead ? await withTimeout(ahead, this.loadTimeoutMs, null) : null;
+    video.src = local ?? item.media.url;
     video.load();
     const ok = await withTimeout(ready, this.loadTimeoutMs, false);
     video.removeEventListener('canplay', onReady);
@@ -197,6 +204,23 @@ export class DomScreen implements Screen {
       video.addEventListener('ended', onEnded);
       video.addEventListener('error', onError);
     });
+  }
+
+  prefetch(item: Item): void {
+    const { id, url, mediaType, sizeBytes } = item.media;
+    if (mediaType !== 'video' || this.prefetched.has(id) || sizeBytes > MAX_PREFETCH_BYTES) return;
+    const download = fetch(url, { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.blob() : null))
+      .then((blob) => (blob ? URL.createObjectURL(blob) : null))
+      .catch(() => null);
+    this.prefetched.set(id, download);
+    while (this.prefetched.size > MAX_PREFETCHED) {
+      const [oldId, oldUrl] = this.prefetched.entries().next().value!;
+      this.prefetched.delete(oldId);
+      void oldUrl.then((u) => {
+        if (u && !this.layers.some((l) => l.video.getAttribute('src') === u)) URL.revokeObjectURL(u);
+      });
+    }
   }
 
   freezeVideo(): void {

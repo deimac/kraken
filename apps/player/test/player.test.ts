@@ -32,6 +32,7 @@ class FakeScreen implements Screen {
   setTransition = vi.fn();
   setMuted = vi.fn();
   freezeVideo = vi.fn(() => this.log.push(`freeze ${this.lastPresented}`));
+  prefetch = vi.fn((i: Item) => this.log.push(`prefetch ${i.campaignId}`));
   lastPresented = '';
   showWaiting = vi.fn((on: boolean) => this.log.push(`waiting ${on}`));
 }
@@ -62,6 +63,9 @@ describe('runPlayer', () => {
     expect(log.indexOf('preload B')).toBeGreaterThan(log.indexOf('end A'));
     expect(log.indexOf('freeze A')).toBeGreaterThan(log.indexOf('end A'));
     expect(log.indexOf('freeze A')).toBeLessThan(log.indexOf('preload B'));
+    // while A plays, B's file is downloaded (no decoding) so it starts right after A
+    expect(log).toContain('prefetch B');
+    expect(log.indexOf('prefetch B')).toBeLessThan(log.indexOf('end A'));
     // an image can still be prepared while a video plays
     expect(log.indexOf('preload C')).toBeLessThan(log.indexOf('end B'));
   });

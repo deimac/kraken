@@ -13,6 +13,8 @@ export interface Screen {
   showWaiting(on: boolean): void;
   /** Keeps the last frame of the video that just ended on screen and frees the TV's video decoder. */
   freezeVideo?(): void;
+  /** Downloads a video's file ahead (no decoding) so it can start right after the current video. */
+  prefetch?(item: Item): void;
 }
 
 interface Deps {
@@ -93,7 +95,8 @@ export async function runPlayer(deps: Deps): Promise<void> {
     // Fire TV and many TVs decode one video at a time: loading the next video while one plays turns both black.
     // Video after video waits for the first to end (its last frame stays on screen); images load meanwhile.
     const oneDecoder = current.item.media.mediaType === 'video' && next.media.mediaType === 'video';
-    if (!oneDecoder) pending = { item: next, ready: screen.preload(next) };
+    if (oneDecoder) screen.prefetch?.(next);
+    else pending = { item: next, ready: screen.preload(next) };
     const result = await playing;
     if (oneDecoder) {
       screen.freezeVideo?.();

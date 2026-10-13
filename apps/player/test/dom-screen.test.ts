@@ -170,4 +170,22 @@ describe('DomScreen with video', () => {
     expect(layer.querySelector('img')!.classList.contains('show')).toBe(true);
     expect(video.getAttribute('src')).toBeNull();
   });
+
+  it('downloads the next video ahead and plays it from memory', async () => {
+    const root = document.body.appendChild(document.createElement('div'));
+    const screen = new DomScreen(root, { loadTimeoutMs: 1000 });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(new Blob(['mp4']), { status: 200 })));
+    const createObjectURL = vi.fn(() => 'blob:next-video');
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }));
+    const video: Item = { ...image('v2'), media: { ...image('v2').media, mediaType: 'video', mime: 'video/mp4', durationMs: 15000, displaySeconds: null } };
+    screen.prefetch(video);
+    await vi.advanceTimersByTimeAsync(0);
+    const ready = screen.preload(video);
+    await vi.advanceTimersByTimeAsync(1100);
+    await ready;
+    const target = [...root.querySelectorAll('video')].find((v) => v.getAttribute('src'));
+    expect(target!.getAttribute('src')).toBe('blob:next-video');
+    expect(fetch).toHaveBeenCalledWith('/api/media/v2', expect.objectContaining({ credentials: 'same-origin' }));
+    vi.unstubAllGlobals();
+  });
 });
