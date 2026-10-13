@@ -30,7 +30,6 @@ class FakeScreen implements Screen {
   });
   setTransition = vi.fn();
   setMuted = vi.fn();
-  freeVideo = vi.fn(() => this.log.push('free video'));
   showWaiting = vi.fn((on: boolean) => this.log.push(`waiting ${on}`));
 }
 
@@ -52,16 +51,10 @@ describe('runPlayer', () => {
     expect(sleep).toHaveBeenCalledWith(1500);
   });
 
-  it('never loads a second video while one is playing (TVs with a single video decoder)', async () => {
+  it('preloads the next video while the current one plays, for a smooth transition', async () => {
     const screen = new FakeScreen();
-    await runPlayer({ screen, manifest: () => manifest([video('A'), video('B'), item('C')]), sleep: async () => {}, running: until(3) });
-    const log = screen.log;
-    // B (video) is only loaded after A (video) ended and its decoder was freed
-    expect(log.indexOf('preload B')).toBeGreaterThan(log.indexOf('end A'));
-    expect(log.indexOf('free video')).toBeGreaterThan(log.indexOf('end A'));
-    expect(log.indexOf('free video')).toBeLessThan(log.indexOf('preload B'));
-    // an image can still be prepared while a video plays
-    expect(log.indexOf('preload C')).toBeLessThan(log.indexOf('end B'));
+    await runPlayer({ screen, manifest: () => manifest([video('A'), video('B')]), sleep: async () => {}, running: until(2) });
+    expect(screen.log.indexOf('preload B')).toBeLessThan(screen.log.indexOf('end A'));
   });
 
   it('preloads the next ad while the current one plays', async () => {

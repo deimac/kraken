@@ -199,11 +199,6 @@ export class DomScreen implements Screen {
     });
   }
 
-  freeVideo(): void {
-    const layer = this.layers[this.active]!;
-    if (layer.video.getAttribute('src')) this.releaseVideo(layer.video);
-  }
-
   private releaseVideo(video: HTMLVideoElement): void {
     video.pause();
     video.removeAttribute('src');
