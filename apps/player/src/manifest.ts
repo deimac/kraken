@@ -23,7 +23,9 @@ export function createManifestClient(
   async function tick() {
     await refresh();
     if (stopped) return;
-    timer = setTimeout(() => void tick(), current && current.items.length > 0 ? intervalMs : emptyRetryMs);
+    // The partner chooses how often its TVs look for new ads (Conta da TV); older servers send nothing.
+    const every = current?.partner.refreshSeconds ? current.partner.refreshSeconds * 1000 : intervalMs;
+    timer = setTimeout(() => void tick(), current && current.items.length > 0 ? every : Math.min(emptyRetryMs, every));
   }
 
   return {

@@ -44,9 +44,12 @@ export const partners = pgTable(
     tvCodeExpiresAt: timestamp('tv_code_expires_at', { withTimezone: true }),
     // Direct access: the TV signs in by opening /player/<slug>, no code. Convenient for tests; anyone with the address can join.
     playerOpen: boolean('player_open').notNull().default(false),
+    // How often the TVs look for new ads (seconds). Short while testing, 5 minutes in normal operation.
+    refreshSeconds: integer('refresh_seconds').notNull().default(300),
     ...timestamps,
   },
   (t) => [
+    check('partners_refresh_check', sql`${t.refreshSeconds} in (15, 30, 60, 300)`),
     check('partners_status_check', sql`${t.status} in ('active', 'inactive')`),
     check(
       'partners_weights_check',

@@ -234,19 +234,21 @@ describe('TV account', () => {
     expect(screen.getByText(/Silk/)).toBeTruthy();
   });
 
-  it('lets the partner choose the transition', async () => {
+  it('lets the partner choose the transition and how often TVs look for new ads', async () => {
     const calls = mockApi({
       'GET /api/auth/me': { user: partnerUser },
-      'GET /api/partner': { partner: { id: 'p1', name: 'Ironberg', slug: 'ironberg', transition: 'fade', transitionMs: 600 } },
+      'GET /api/partner': { partner: { id: 'p1', name: 'Ironberg', slug: 'ironberg', transition: 'fade', transitionMs: 600, refreshSeconds: 300 } },
       'PATCH /api/partner/settings': (b: unknown) => ({ partner: { id: 'p1', slug: 'ironberg', ...(b as object) } }),
     });
     renderAt('/parceiro/tv');
     const type = await screen.findByLabelText('Transição entre anúncios');
     await waitFor(() => expect((type as HTMLSelectElement).value).toBe('fade'));
+    expect((screen.getByLabelText('Buscar anúncios novos a cada') as HTMLSelectElement).value).toBe('300');
     await userEvent.selectOptions(type, 'slide');
     await userEvent.selectOptions(screen.getByLabelText('Duração'), '1000');
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar transição' }));
-    expect(calls.find((c) => c.method === 'PATCH')!.body).toEqual({ transition: 'slide', transitionMs: 1000 });
-    expect(await screen.findByText('Transição salva. As TVs aplicam em até 5 minutos.')).toBeTruthy();
+    await userEvent.selectOptions(screen.getByLabelText('Buscar anúncios novos a cada'), '15');
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    expect(calls.find((c) => c.method === 'PATCH')!.body).toEqual({ transition: 'slide', transitionMs: 1000, refreshSeconds: 15 });
+    expect(await screen.findByText('Configurações salvas. As TVs aplicam na próxima busca por anúncios.')).toBeTruthy();
   });
 });

@@ -78,6 +78,7 @@ export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean; v
         weightHigh: partners.weightHigh,
         transition: partners.transition,
         transitionMs: partners.transitionMs,
+        refreshSeconds: partners.refreshSeconds,
       })
       .from(partners)
       .where(eq(partners.id, partnerId));
@@ -103,6 +104,7 @@ export const playerRoutes: FastifyPluginAsync<{ db: Db; cookieSecure: boolean; v
         weights: { low: p!.weightLow, medium: p!.weightMedium, high: p!.weightHigh },
         transition: p!.transition,
         transitionMs: p!.transitionMs,
+        refreshSeconds: p!.refreshSeconds,
       },
       items: items.map((i) => ({ ...i, media: { ...i.media, url: `/api/media/${i.media.id}` } })),
       generatedAt: new Date().toISOString(),

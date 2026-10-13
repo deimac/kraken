@@ -1,0 +1,2 @@
+ALTER TABLE "partners" ADD COLUMN "refresh_seconds" integer DEFAULT 300 NOT NULL;--> statement-breakpoint
+ALTER TABLE "partners" ADD CONSTRAINT "partners_refresh_check" CHECK ("partners"."refresh_seconds" in (15, 30, 60, 300));

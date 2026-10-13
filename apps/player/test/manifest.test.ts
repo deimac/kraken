@@ -29,6 +29,18 @@ describe('manifest client', () => {
     client.stop();
   });
 
+  it('follows the interval the partner chose for its TVs', async () => {
+    const withRefresh = (n: number, s: number) => ({ ...manifest(n), partner: { ...manifest(n).partner, refreshSeconds: s } });
+    const fetcher = vi.fn().mockResolvedValueOnce(withRefresh(1, 15)).mockResolvedValue(withRefresh(2, 15));
+    const client = createManifestClient(fetcher);
+    await client.start();
+    await vi.advanceTimersByTimeAsync(14_000);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(client.current()!.items).toHaveLength(2);
+    client.stop();
+  });
+
   it('retries sooner when empty and reports 401', async () => {
     const onUnauthorized = vi.fn();
     const fetcher = vi.fn().mockResolvedValueOnce(manifest(0)).mockRejectedValueOnce(new ApiError(401, 'unauthenticated'));

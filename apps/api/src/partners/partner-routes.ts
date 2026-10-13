@@ -15,7 +15,12 @@ const CODE_TTL_MS = 24 * 3_600_000;
 
 const PlayerAccount = z.object({ password: z.string().min(8).max(200) }).strict();
 const Settings = z
-  .object({ transition: z.enum(['fade', 'slide', 'cut']), transitionMs: z.number().int().min(0).max(3000), playerOpen: z.boolean() })
+  .object({
+    transition: z.enum(['fade', 'slide', 'cut']),
+    transitionMs: z.number().int().min(0).max(3000),
+    playerOpen: z.boolean(),
+    refreshSeconds: z.union([z.literal(15), z.literal(30), z.literal(60), z.literal(300)]),
+  })
   .partial()
   .strict();
 

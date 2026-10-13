@@ -55,6 +55,7 @@ describe('player manifest', () => {
     expect(body.partner).toMatchObject({ weights: { low: 1, medium: 2, high: 3 }, transition: 'slide', transitionMs: 1000 });
     expect(body.items.map((i: { name: string }) => i.name)).toEqual(['Aprovada']);
     expect(body.version).toBe('t');
+    expect(body.partner.refreshSeconds).toBe(300);
     expect(body.items[0].media).toMatchObject({ id: approvedMedia, url: `/api/media/${approvedMedia}`, mediaType: 'image' });
   });
 
@@ -84,5 +85,13 @@ describe('player media access', () => {
     const [c] = await t.db.select().from(campaigns).where(eq(campaigns.name, 'Aprovada'));
     await req('POST', `/api/campaigns/${c!.id}/cancel`, s.gerenteA);
     expect((await req('GET', `/api/media/${approvedMedia}`, tv)).statusCode).toBe(404);
+  });
+});
+
+describe('how often TVs look for new ads', () => {
+  it('is a partner setting among the offered intervals and reaches the TV', async () => {
+    expect((await req('PATCH', '/api/partner/settings', s.gerenteA, { refreshSeconds: 15 })).json().partner.refreshSeconds).toBe(15);
+    expect((await req('PATCH', '/api/partner/settings', s.gerenteA, { refreshSeconds: 7 })).statusCode).toBe(400);
+    expect((await req('GET', '/api/player/manifest', tv)).json().partner.refreshSeconds).toBe(15);
   });
 });

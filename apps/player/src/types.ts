@@ -21,7 +21,7 @@ export interface Item {
 }
 
 export interface Manifest {
-  partner: { name: string; weights: Record<Level, number>; transition: Transition; transitionMs: number };
+  partner: { name: string; weights: Record<Level, number>; transition: Transition; transitionMs: number; refreshSeconds?: number };
   items: Item[];
   generatedAt: string;
   /** Server build; a change means a new player is available. */
