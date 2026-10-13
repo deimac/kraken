@@ -15,6 +15,7 @@
   --on-accent: #ffffff;
   --soft: #f0f2ef;
   --danger: #b42318;
+  --chart-bar: #0e8a5f;
   --pending-bg: #fff3d6; --pending-fg: #7a5300;
   --active-bg: #ddf3e8; --active-fg: #0b5e41;
   --changes-bg: #fbe3dc; --changes-fg: #8a2f14;
@@ -37,6 +38,7 @@
   --on-accent: #08140f;
   --soft: #2a251f;
   --danger: #f0a58a;
+  --chart-bar: #25a574;
   --pending-bg: #3a2e14; --pending-fg: #f2c26b;
   --active-bg: #18301f; --active-fg: #8fd9a8;
   --changes-bg: #3a1e16; --changes-fg: #f0a58a;
@@ -177,3 +179,19 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .upload-results .ok { color: var(--accent); }
 .upload-results .error { color: var(--danger); }
 .plan-summary { max-width: 360px; }
+
+.chart { margin: 0; position: relative; }
+.chart-max { font-size: 11px; color: var(--muted); border-bottom: 1px dashed var(--border); padding-bottom: 2px; margin-bottom: 4px; }
+.chart-plot { display: flex; align-items: flex-end; gap: 4px; height: 140px; border-bottom: 1px solid var(--border); }
+.chart-col { flex: 1; height: 100%; display: flex; align-items: flex-end; position: relative; outline: none; cursor: default; }
+.chart-col:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.chart-bar { width: 100%; min-height: 0; background: var(--chart-bar); border-radius: 4px 4px 0 0; }
+.chart-col:hover .chart-bar, .chart-col:focus .chart-bar { filter: brightness(1.15); }
+.chart-tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); white-space: nowrap; background: var(--text); color: var(--bg); font-size: 12px; padding: 4px 8px; border-radius: 6px; pointer-events: none; z-index: 2; }
+.chart-axis { display: flex; gap: 4px; font-size: 11px; color: var(--muted); margin-top: 4px; }
+.chart-axis span { flex: 1; text-align: center; overflow: visible; white-space: nowrap; }
+.tv-status { display: flex; gap: 12px; align-items: center; background: var(--card); border: 1px solid var(--border); border-left-width: 4px; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; }
+.tv-status.tv-on { border-left-color: var(--accent); }
+.tv-status.tv-on svg { color: var(--accent); }
+.tv-status.tv-off { border-left-color: var(--danger); }
+.tv-status.tv-off svg { color: var(--danger); }

@@ -36,9 +36,9 @@ describe('login and session', () => {
   });
 
   it('keeps advertisers out of partner and admin areas', async () => {
-    mockApi({ 'GET /api/auth/me': { user: advertiserUser }, 'GET /api/campaigns': empty });
+    mockApi({ 'GET /api/auth/me': { user: advertiserUser }, 'GET /api/dashboard': { role: 'advertiser', stats: {}, days: [] } });
     renderAt('/admin/parceiros');
-    expect(await screen.findByRole('heading', { name: 'Minhas assinaturas' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Início' })).toBeTruthy();
     expect(screen.queryByText('Parceiros')).toBeNull();
   });
 
@@ -68,9 +68,9 @@ describe('login and session', () => {
   });
 
   it('sends bare area URLs to the area home', async () => {
-    mockApi({ 'GET /api/auth/me': { user: partnerUser }, 'GET /api/campaigns': empty });
+    mockApi({ 'GET /api/auth/me': { user: partnerUser }, 'GET /api/dashboard': { role: 'partner', stats: {}, expiring: [], tv: { configured: false, lastSeenAt: null, online: false }, days: [] } });
     renderAt('/parceiro');
-    expect(await screen.findByRole('heading', { name: 'Assinaturas' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Início' })).toBeTruthy();
   });
 });
 

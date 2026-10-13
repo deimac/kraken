@@ -20,6 +20,8 @@ describe('reports', () => {
     expect(screen.getByText('120')).toBeTruthy();
     expect(screen.getByText('Total no período: 150 inserções')).toBeTruthy();
     expect(screen.getByText(/Kraken Ads · institucional/)).toBeTruthy();
+    expect(screen.getByRole('figure', { name: 'Inserções por dia no período' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: '11/10: 100' })).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Ver dias de Verão' }));
     expect(screen.getByText('11/10/2026')).toBeTruthy();
     expect(screen.getByText('70')).toBeTruthy();

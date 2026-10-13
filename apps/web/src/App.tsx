@@ -3,6 +3,7 @@ import { AuthProvider, RequireRole } from './auth';
 import { Institutional } from './pages/admin/Institutional';
 import { KrakenPlans } from './pages/admin/KrakenPlans';
 import { Partners } from './pages/admin/Partners';
+import { Dashboard } from './pages/Dashboard';
 import { Home, TvNotice } from './pages/Home';
 import { Login } from './pages/Login';
 import { AdvertiserDetail } from './pages/partner/AdvertiserDetail';
@@ -31,14 +32,16 @@ export function AppRoutes() {
       <Route path="/tv" element={<TvNotice />} />
       <Route path="/p/:slug" element={<PublicPartner />} />
       <Route path="/admin" element={<RequireRole role="admin"><Layout role="admin" /></RequireRole>}>
-        <Route index element={<Navigate to="parceiros" replace />} />
+        <Route index element={<Navigate to="inicio" replace />} />
+        <Route path="inicio" element={<Dashboard />} />
         <Route path="parceiros" element={<Partners />} />
         <Route path="planos-kraken" element={<KrakenPlans />} />
         <Route path="institucionais" element={<Institutional />} />
         <Route path="relatorios" element={<Reports />} />
       </Route>
       <Route path="/parceiro" element={<RequireRole role="partner_user"><Layout role="partner_user" /></RequireRole>}>
-        <Route index element={<Navigate to="assinaturas" replace />} />
+        <Route index element={<Navigate to="inicio" replace />} />
+        <Route path="inicio" element={<Dashboard />} />
         <Route path="assinaturas" element={<SubscriptionList base="/parceiro" />} />
         <Route path="assinaturas/nova" element={<SubscriptionForm base="/parceiro" />} />
         <Route path="assinaturas/:id" element={<SubscriptionDetail base="/parceiro" />} />
@@ -52,7 +55,8 @@ export function AppRoutes() {
         <Route path="relatorios" element={<Reports />} />
       </Route>
       <Route path="/anunciante" element={<RequireRole role="advertiser"><Layout role="advertiser" /></RequireRole>}>
-        <Route index element={<Navigate to="assinaturas" replace />} />
+        <Route index element={<Navigate to="inicio" replace />} />
+        <Route path="inicio" element={<Dashboard />} />
         <Route path="assinaturas" element={<SubscriptionList base="/anunciante" />} />
         <Route path="assinaturas/nova" element={<SubscriptionForm base="/anunciante" />} />
         <Route path="assinaturas/:id" element={<SubscriptionDetail base="/anunciante" />} />

@@ -46,9 +46,9 @@ export function useAuth(): AuthState {
 }
 
 export function homeFor(user: User): string {
-  if (user.role === 'admin') return '/admin/parceiros';
-  if (user.role === 'partner_user') return '/parceiro/assinaturas';
-  if (user.role === 'advertiser') return '/anunciante/assinaturas';
+  if (user.role === 'admin') return '/admin/inicio';
+  if (user.role === 'partner_user') return '/parceiro/inicio';
+  if (user.role === 'advertiser') return '/anunciante/inicio';
   return '/tv';
 }
 

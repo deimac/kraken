@@ -32,6 +32,7 @@ Merge/push na `main` dispara build e deploy automáticos. O CI (`.github/workflo
 - `0006_advertisers_details` só adiciona colunas (tipo de pessoa, CPF/CNPJ, endereço, arquivamento) e um índice único de documento por parceiro; anunciantes antigos ficam sem documento até serem editados.
 - `0007_plans_limits` só adiciona colunas aos planos (vídeos, imagens, duração máxima, preço, período); planos existentes recebem 1 vídeo, 1 imagem, 30 s, preço 0 ("Sob consulta") e período mensal.
 - `0008_subscriptions` + `0009_drop_current_media` transformam campanhas em assinaturas com peças: `approved` → `active`; rascunho/aguardando/correção → `paused`; a mídia atual de cada campanha vira peça aprovada e as anteriores ficam como removidas (histórico); depois remove a coluna `campaigns.current_media_id`. **Conferir o backup do dia do `kraken-db` antes do deploy.** Reverter para um deploy anterior a essa migração não funciona (o código antigo usa a coluna removida): corrigir para frente.
+- `0010_tv_last_seen` adiciona `partners.tv_last_seen_at` (atualizado quando a TV busca a lista de anúncios, no máximo 1×/min); a tela Início mostra TV online (contato há menos de 10 min) ou offline.
 
 ## Mídia
 

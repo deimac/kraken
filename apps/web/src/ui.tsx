@@ -1,7 +1,7 @@
 import {
-  IconBuildingStore, IconChartBar, IconDeviceTv, IconLogout, IconReceipt, IconReceipt2, IconSearch, IconSpeakerphone, IconTags, IconUsersGroup,
+  IconBuildingStore, IconChartBar, IconDeviceTv, IconHome, IconLogout, IconReceipt, IconReceipt2, IconSearch, IconSpeakerphone, IconTags, IconUsersGroup,
 } from '@tabler/icons-react';
-import { useEffect, useId, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
 import { useAuth } from './auth';
 import { STATUS_LABEL, statusTone } from './format';
@@ -10,12 +10,14 @@ import type { EffectiveStatus, Role } from './types';
 
 const NAV: Record<Exclude<Role, 'player'>, { to: string; label: string; icon: ReactNode }[]> = {
   admin: [
+    { to: '/admin/inicio', label: 'Início', icon: <IconHome size={18} /> },
     { to: '/admin/parceiros', label: 'Parceiros', icon: <IconUsersGroup size={18} /> },
     { to: '/admin/planos-kraken', label: 'Planos Kraken', icon: <IconReceipt size={18} /> },
     { to: '/admin/institucionais', label: 'Institucionais', icon: <IconSpeakerphone size={18} /> },
     { to: '/admin/relatorios', label: 'Relatórios', icon: <IconChartBar size={18} /> },
   ],
   partner_user: [
+    { to: '/parceiro/inicio', label: 'Início', icon: <IconHome size={18} /> },
     { to: '/parceiro/assinaturas', label: 'Assinaturas', icon: <IconReceipt2 size={18} /> },
     { to: '/parceiro/anunciantes', label: 'Anunciantes', icon: <IconBuildingStore size={18} /> },
     { to: '/parceiro/planos', label: 'Planos de anúncio', icon: <IconTags size={18} /> },
@@ -23,6 +25,7 @@ const NAV: Record<Exclude<Role, 'player'>, { to: string; label: string; icon: Re
     { to: '/parceiro/relatorios', label: 'Relatórios', icon: <IconChartBar size={18} /> },
   ],
   advertiser: [
+    { to: '/anunciante/inicio', label: 'Início', icon: <IconHome size={18} /> },
     { to: '/anunciante/assinaturas', label: 'Minhas assinaturas', icon: <IconReceipt2 size={18} /> },
     { to: '/anunciante/relatorios', label: 'Relatórios', icon: <IconChartBar size={18} /> },
   ],
@@ -165,5 +168,52 @@ export function ConfirmDialog(props: {
         </div>
       </div>
     </div>
+  );
+}
+
+const num = (v: number) => v.toLocaleString('pt-BR');
+
+/**
+ * Single-series bar chart (no legend: the label names the series). Each bar is focusable and shows a tooltip;
+ * a visually hidden table carries the same numbers for screen readers.
+ */
+export function BarChart({ label, data, format = (s) => s }: {
+  label: string; data: { label: string; value: number }[]; format?: (label: string) => string;
+}) {
+  const [active, setActive] = useState<number | null>(null);
+  const max = Math.max(1, ...data.map((d) => d.value));
+  const every = data.length > 10 ? 2 : 1;
+  return (
+    <figure className="chart" aria-label={label}>
+      <div className="chart-max" aria-hidden="true">{num(max)}</div>
+      <div className="chart-plot" onMouseLeave={() => setActive(null)}>
+        {data.map((d, i) => (
+          <div
+            key={d.label}
+            className="chart-col"
+            role="img"
+            aria-label={`${format(d.label)}: ${num(d.value)}`}
+            tabIndex={0}
+            onMouseEnter={() => setActive(i)}
+            onFocus={() => setActive(i)}
+            onBlur={() => setActive(null)}
+          >
+            <div className="chart-bar" style={{ height: `${(d.value / max) * 100}%` }} />
+            {active === i && <div className="chart-tip" role="tooltip">{format(d.label)}: {num(d.value)}</div>}
+          </div>
+        ))}
+      </div>
+      <div className="chart-axis" aria-hidden="true">
+        {data.map((d, i) => <span key={d.label}>{i % every === (data.length - 1) % every ? format(d.label) : ''}</span>)}
+      </div>
+      <table className="visually-hidden">
+        <caption>{label}</caption>
+        <tbody>
+          {data.map((d) => (
+            <tr key={d.label}><th scope="row">{format(d.label)}</th><td>{num(d.value)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </figure>
   );
 }

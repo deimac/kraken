@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../api';
 import { errorMessage } from '../../messages';
 import type { ReportCampaign } from '../../types';
-import { Field, Notice, PageHeader } from '../../ui';
+import { BarChart, Field, Notice, PageHeader } from '../../ui';
 
 const iso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -45,6 +45,7 @@ export function Reports() {
 
   const total = rows?.reduce((sum, r) => sum + r.total, 0) ?? 0;
   const csv = `/api/reports/plays.csv?from=${query.from}&to=${query.to}`;
+  const perDay = dailyTotals(rows ?? [], query.from, query.to);
 
   return (
     <>
@@ -67,6 +68,11 @@ export function Reports() {
         <div><button className="btn btn-primary" type="submit">Atualizar</button></div>
       </form>
       {rows && rows.length > 0 && <p><strong>Total no período: {fmt(total)} inserções</strong></p>}
+      {rows && rows.length > 0 && perDay && (
+        <div className="card">
+          <BarChart label="Inserções por dia no período" data={perDay} format={(d) => `${d.slice(8, 10)}/${d.slice(5, 7)}`} />
+        </div>
+      )}
       <div className="list">
         {rows?.map((r) => (
           <div key={r.campaignId}>
@@ -110,4 +116,22 @@ export function Reports() {
       </div>
     </>
   );
+}
+
+const MAX_CHART_DAYS = 62;
+
+/** Sum of all subscriptions per day, every day of the period (zeros included); null when too long to chart. */
+function dailyTotals(rows: ReportCampaign[], from: string, to: string): { label: string; value: number }[] | null {
+  const byDay = new Map<string, number>();
+  for (const r of rows) for (const d of r.days) byDay.set(d.day, (byDay.get(d.day) ?? 0) + d.count);
+  const known = [...byDay.keys()].sort();
+  const start = known[0] && known[0] < from ? known[0] : from;
+  const end = known.at(-1) && known.at(-1)! > to ? known.at(-1)! : to;
+  const out: { label: string; value: number }[] = [];
+  for (let d = new Date(`${start}T12:00:00Z`); d.toISOString().slice(0, 10) <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    const day = d.toISOString().slice(0, 10);
+    out.push({ label: day, value: byDay.get(day) ?? 0 });
+    if (out.length > MAX_CHART_DAYS) return null;
+  }
+  return out;
 }

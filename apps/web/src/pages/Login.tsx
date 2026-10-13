@@ -21,7 +21,8 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (user) return <Navigate to={homeFor(user)} replace />;
+  // Signing in sets the user before navigate() runs: this redirect must honour the return path too.
+  if (user) return <Navigate to={safeReturnPath(params.get('voltar')) ?? homeFor(user)} replace />;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
